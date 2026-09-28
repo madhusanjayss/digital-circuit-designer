@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal & Traffic Analytics | Digital Circuit Designer</title>
+  <style>
+    :root {
+      --bg-primary: #0f141c;
+      --bg-secondary: #171f2c;
+      --bg-card: #1c2637;
+      --border-color: #2b394f;
+      --border-hover: #3b82f6;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent-blue: #3b82f6;
+      --accent-blue-hover: #2563eb;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --accent-yellow: #f59e0b;
+      --accent-cyan: #06b6d4;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Auth Modal Screen */
+    .auth-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .auth-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(59, 130, 246, 0.2);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 440px;
+      padding: 36px 30px;
+      text-align: center;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .auth-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--accent-blue);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      margin-bottom: 18px;
+    }
+
+    .auth-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .auth-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .input-group {
+      position: relative;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-control {
+      width: 100%;
+      padding: 12px 14px;
+      padding-right: 42px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      color: #fff;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-control:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+    }
+
+    .btn-toggle-pwd {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 4px;
+    }
+
+    .btn-toggle-pwd:hover {
+      color: #fff;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-blue-hover) 100%);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-submit:hover {
+      opacity: 0.95;
+    }
+
+    .btn-submit:active {
+      transform: scale(0.98);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .auth-alert {
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      margin-bottom: 18px;
+      display: none;
+      text-align: left;
+    }
+
+    .auth-alert.error {
+      display: block;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+
+    /* Dashboard Layout */
+    .dashboard-container {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    header.dashboard-header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-branding {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-logo {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      color: #fff;
+      font-size: 18px;
+    }
+
+    .header-title-text h1 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .header-title-text p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-green);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    .btn-action {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 7px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .btn-action:hover {
+      background: #25334a;
+      border-color: var(--border-hover);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.25);
+    }
+
+    /* Main Dashboard Content */
+    main.dashboard-main {
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Metric Cards Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .metric-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .metric-card:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+    }
+
+    .metric-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .metric-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .metric-icon {
+      font-size: 20px;
+    }
+
+    .metric-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .metric-subtext {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 6px;
+    }
+
+    .text-green { color: var(--accent-green); }
+    .text-red { color: var(--accent-red); }
+    .text-blue { color: var(--accent-blue); }
+    .text-yellow { color: var(--accent-yellow); }
+
+    /* Tables & Sections */
+    .section-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+
+    .section-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .search-input {
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 6px 12px;
+      color: #fff;
+      font-size: 13px;
+      outline: none;
+      width: 220px;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-blue);
+    }
+
+    .table-responsive {
+      overflow-x: auto;
+    }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    table.data-table th {
+      background: rgba(15, 20, 28, 0.6);
+      padding: 12px 18px;
+      color: var(--text-muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    table.data-table td {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+
+    table.data-table tbody tr:hover {
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .badge-success {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .badge-failed {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .badge-ip {
+      font-family: monospace;
+      background: rgba(148, 163, 184, 0.1);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      color: #cbd5e1;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .ip-lookup-link {
+      color: var(--accent-blue);
+      text-decoration: none;
+      font-family: monospace;
+      font-weight: 600;
+    }
+
+    .ip-lookup-link:hover {
+      text-decoration: underline;
+    }
+
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* Modal for API Config */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      max-width: 500px;
+      width: 100%;
+    }
+
+    .modal-box h2 {
+      font-size: 18px;
+      margin-bottom: 12px;
+      color: #fff;
+    }
+
+    .modal-box p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+      line-height: 1.6;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Authentication Modal (Default View) -->
+  <div class="auth-overlay" id="auth-screen">
+    <div class="auth-card">
+      <div class="auth-badge">Security Gateway</div>
+      <h1 class="auth-title">Admin Authentication</h1>
+      <p class="auth-subtitle">Verify your identity to access traffic analytics & login telemetry</p>
+
+      <div class="auth-alert" id="auth-alert"></div>
+
+      <form id="auth-form">
+        <div class="input-group">
+          <label for="admin-password">Master Password</label>
+          <div class="input-wrapper">
+            <input type="password" id="admin-password" class="input-control" placeholder="Enter administrative password" required autocomplete="current-password">
+            <button type="button" class="btn-toggle-pwd" id="btn-toggle-pwd" title="Toggle password visibility">👁</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit" id="btn-login-submit">
+          <span>Verify & Access Portal</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Authenticated Dashboard -->
+  <div class="dashboard-container" id="dashboard-screen">
+    <header class="dashboard-header">
+      <div class="header-branding">
+        <div class="header-logo">⚙</div>
+        <div class="header-title-text">
+          <h1>Digital Circuit Designer</h1>
+          <p>Admin Control Center & Traffic Telemetry</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="status-badge" id="backend-status-badge">
+          <span class="status-dot"></span>
+          <span id="backend-status-text">Live System</span>
+        </div>
+        <button class="btn-action" id="btn-configure-api" title="Configure live Flask backend URL">🔌 Backend API</button>
+        <button class="btn-action" id="btn-refresh" title="Refresh analytics data">🔄 Refresh</button>
+        <button class="btn-action btn-danger" id="btn-logout" title="Exit portal">Sign Out</button>
+      </div>
+    </header>
+
+    <main class="dashboard-main">
+      <!-- KPI Metric Cards -->
+      <section class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-title">Total Logins</span>
+            <span class="metric-icon">🔑</span>
+          </div>
+          <div class="metric-value" id="kpi-total-logins">0</div>
+          <div class="metric-subtext">
+            <span class="text-green" id="kpi-success-logins">0 Successful</span> &bull; 
+            <span class="text-red" id="kpi-failed-logins">0 Failed</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-title">Unique Client IPs</span>
+            <span class="metric-icon">🌐</span>
+          </div>
+          <div class="metric-value" id="kpi-unique-ips">0</div>
+          <div class="metric-subtext">
+            <span>Distinct visitor addresses</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-title">Overall Traffic (Hits)</span>
+            <span class="metric-icon">📊</span>
+          </div>
+          <div class="metric-value" id="kpi-total-traffic">0</div>
+          <div class="metric-subtext">
+            <span class="text-blue">Total recorded pageviews</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-title">Last Activity</span>
+            <span class="metric-icon">⚡</span>
+          </div>
+          <div class="metric-value" style="font-size: 20px;" id="kpi-last-activity">Just now</div>
+          <div class="metric-subtext">
+            <span id="kpi-recent-ip">Active session</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- IP Summary Table -->
+      <section class="section-card">
+        <div class="section-header">
+          <div class="section-title">
+            <span>🌐 Top Visitor IP Addresses</span>
+          </div>
+          <div class="section-controls">
+            <input type="text" class="search-input" id="search-ip-summary" placeholder="Filter by IP address...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>IP Address</th>
+                <th>Total Hits</th>
+                <th>Last Seen Timestamp</th>
+                <th>Geographic / Network Lookup</th>
+              </tr>
+            </thead>
+            <tbody id="table-ip-summary-body">
+              <tr><td colspan="4" class="empty-state">No IP traffic data captured yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Visitor Traffic Detailed Log -->
+      <section class="section-card">
+        <div class="section-header">
+          <div class="section-title">
+            <span>📈 Live Visitor Traffic Logs</span>
+          </div>
+          <div class="section-controls">
+            <input type="text" class="search-input" id="search-traffic" placeholder="Search IP, Path, User Agent...">
+            <button class="btn-action" id="btn-export-traffic">📥 Export CSV</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Client IP</th>
+                <th>Path / Page</th>
+                <th>Referrer</th>
+                <th>User Agent / Browser Details</th>
+              </tr>
+            </thead>
+            <tbody id="table-traffic-body">
+              <tr><td colspan="5" class="empty-state">No traffic logs recorded.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Login Audit Logs -->
+      <section class="section-card">
+        <div class="section-header">
+          <div class="section-title">
+            <span>🛡️ Login Audit & Security Logs</span>
+          </div>
+          <div class="section-controls">
+            <input type="text" class="search-input" id="search-logins" placeholder="Search login IP or status...">
+            <button class="btn-action" id="btn-export-logins">📥 Export CSV</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Client IP</th>
+                <th>Authentication Status</th>
+                <th>Device / Browser Agent</th>
+              </tr>
+            </thead>
+            <tbody id="table-logins-body">
+              <tr><td colspan="4" class="empty-state">No login attempts recorded.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Backend API Configuration Modal -->
+  <div class="modal-backdrop" id="modal-api-config">
+    <div class="modal-box">
+      <h2>🔌 Configure Backend API Server</h2>
+      <p>
+        If your Flask backend is hosted on Render, Railway, or VPS, enter the base URL below (e.g. <code>https://my-backend.onrender.com</code>).
+        Leave empty to use automatic relative routing.
+      </p>
+      <div class="input-group">
+        <label for="cfg-backend-url">Backend API Base URL</label>
+        <input type="text" id="cfg-backend-url" class="input-control" placeholder="https://example.onrender.com">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action" id="btn-cancel-config">Cancel</button>
+        <button type="button" class="btn-action" style="background: var(--accent-blue);" id="btn-save-config">Save & Connect</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      const REQUIRED_PASSWORD = "Sandeep@23";
+      const STORAGE_KEY_TOKEN = "admin_auth_token";
+      const STORAGE_KEY_BACKEND = "admin_backend_url";
+      const STORAGE_KEY_LOCAL_LOGINS = "local_admin_logins";
+      const STORAGE_KEY_LOCAL_TRAFFIC = "local_visitor_traffic_log";
+
+      // Elements
+      const authScreen = document.getElementById('auth-screen');
+      const dashboardScreen = document.getElementById('dashboard-screen');
+      const authForm = document.getElementById('auth-form');
+      const passwordInput = document.getElementById('admin-password');
+      const authAlert = document.getElementById('auth-alert');
+      const btnTogglePwd = document.getElementById('btn-toggle-pwd');
+      const btnLoginSubmit = document.getElementById('btn-login-submit');
+
+      const btnLogout = document.getElementById('btn-logout');
+      const btnRefresh = document.getElementById('btn-refresh');
+      const btnConfigureApi = document.getElementById('btn-configure-api');
+      const modalApiConfig = document.getElementById('modal-api-config');
+      const cfgBackendUrl = document.getElementById('cfg-backend-url');
+      const btnSaveConfig = document.getElementById('btn-save-config');
+      const btnCancelConfig = document.getElementById('btn-cancel-config');
+
+      // KPIs
+      const kpiTotalLogins = document.getElementById('kpi-total-logins');
+      const kpiSuccessLogins = document.getElementById('kpi-success-logins');
+      const kpiFailedLogins = document.getElementById('kpi-failed-logins');
+      const kpiUniqueIps = document.getElementById('kpi-unique-ips');
+      const kpiTotalTraffic = document.getElementById('kpi-total-traffic');
+      const kpiLastActivity = document.getElementById('kpi-last-activity');
+      const kpiRecentIp = document.getElementById('kpi-recent-ip');
+
+      // Tables
+      const tableIpSummaryBody = document.getElementById('table-ip-summary-body');
+      const tableTrafficBody = document.getElementById('table-traffic-body');
+      const tableLoginsBody = document.getElementById('table-logins-body');
+
+      // Searches
+      const searchIpSummary = document.getElementById('search-ip-summary');
+      const searchTraffic = document.getElementById('search-traffic');
+      const searchLogins = document.getElementById('search-logins');
+
+      // Exports
+      const btnExportTraffic = document.getElementById('btn-export-traffic');
+      const btnExportLogins = document.getElementById('btn-export-logins');
+
+      let currentData = {
+        stats: {},
+        ip_summary: [],
+        recent_traffic: [],
+        recent_logins: []
+      };
+
+      function getBackendUrl() {
+        return localStorage.getItem(STORAGE_KEY_BACKEND) || '';
+      }
+
+      function getApiBase() {
+        const custom = getBackendUrl();
+        return custom ? custom.replace(/\/$/, '') : '';
+      }
+
+      // Password toggle
+      btnTogglePwd.addEventListener('click', () => {
+        const isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        btnTogglePwd.textContent = isPassword ? '🔒' : '👁';
+      });
+
+      // Show alert helper
+      function showAlert(msg) {
+        authAlert.textContent = msg;
+        authAlert.classList.add('error');
+      }
+
+      function hideAlert() {
+        authAlert.textContent = '';
+        authAlert.classList.remove('error');
+      }
+
+      // Helper: get client IP via ipify for client-side fallback
+      async function getClientIp() {
+        try {
+          const res = await fetch('https://api.ipify.org?format=json');
+          if (res.ok) {
+            const data = await res.json();
+            return data.ip;
+          }
+        } catch (_) {}
+        return '127.0.0.1';
+      }
+
+      // Record local login attempt
+      function recordLocalLogin(ip, status) {
+        try {
+          const logs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOCAL_LOGINS) || '[]');
+          logs.unshift({
+            id: Date.now(),
+            ip_address: ip,
+            status: status,
+            user_agent: navigator.userAgent,
+            timestamp: new Date().toISOString()
+          });
+          if (logs.length > 200) logs.length = 200;
+          localStorage.setItem(STORAGE_KEY_LOCAL_LOGINS, JSON.stringify(logs));
+        } catch (e) {
+          console.warn('Local login log error', e);
+        }
+      }
+
+      // Auth Handler
+      authForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideAlert();
+        const pwd = passwordInput.value.trim();
+        if (!pwd) return;
+
+        btnLoginSubmit.disabled = true;
+        btnLoginSubmit.innerHTML = '<span>Verifying credentials...</span>';
+
+        const apiBase = getApiBase();
+        const endpointsToTry = [];
+        if (apiBase) endpointsToTry.push(apiBase + '/api/login');
+        endpointsToTry.push('/api/login');
+
+        let authenticated = false;
+        let token = '';
+
+        for (const ep of endpointsToTry) {
+          try {
+            const resp = await fetch(ep, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ password: pwd, user_agent: navigator.userAgent })
+            });
+            if (resp.ok) {
+              const data = await resp.json();
+              token = data.token;
+              authenticated = true;
+              break;
+            } else if (resp.status === 401) {
+              showAlert('Invalid password. Access denied.');
+              btnLoginSubmit.disabled = false;
+              btnLoginSubmit.innerHTML = '<span>Verify & Access Portal</span>';
+              return;
+            }
+          } catch (_) {
+            // Backend offline/unreachable, continue to fallback
+          }
+        }
+
+        // If backend was reached and authenticated
+        if (authenticated && token) {
+          sessionStorage.setItem(STORAGE_KEY_TOKEN, token);
+          unlockDashboard();
+          return;
+        }
+
+        // Fallback for static GitHub Pages verification
+        const clientIp = await getClientIp();
+        if (pwd === REQUIRED_PASSWORD) {
+          recordLocalLogin(clientIp, 'SUCCESS');
+          const localToken = 'local_' + Math.random().toString(36).substring(2);
+          sessionStorage.setItem(STORAGE_KEY_TOKEN, localToken);
+          unlockDashboard();
+        } else {
+          recordLocalLogin(clientIp, 'FAILED');
+          showAlert('Invalid password. Access denied.');
+        }
+
+        btnLoginSubmit.disabled = false;
+        btnLoginSubmit.innerHTML = '<span>Verify & Access Portal</span>';
+      });
+
+      function unlockDashboard() {
+        authScreen.style.display = 'none';
+        dashboardScreen.style.display = 'flex';
+        fetchAnalytics();
+      }
+
+      // Fetch analytics data
+      async function fetchAnalytics() {
+        const token = sessionStorage.getItem(STORAGE_KEY_TOKEN) || '';
+        const apiBase = getApiBase();
+        const endpointsToTry = [];
+        if (apiBase) endpointsToTry.push(apiBase + '/api/admin/stats');
+        endpointsToTry.push('/api/admin/stats');
+
+        let loadedFromBackend = false;
+
+        for (const ep of endpointsToTry) {
+          try {
+            const res = await fetch(ep, {
+              headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (res.ok) {
+              const data = await res.json();
+              currentData = data;
+              document.getElementById('backend-status-text').textContent = 'Backend Connected';
+              renderDashboard();
+              loadedFromBackend = true;
+              break;
+            }
+          } catch (_) {}
+        }
+
+        if (!loadedFromBackend) {
+          // Render local fallback metrics
+          document.getElementById('backend-status-text').textContent = 'Client/Pages Mode';
+          loadLocalFallbackAnalytics();
+          renderDashboard();
+        }
+      }
+
+      function loadLocalFallbackAnalytics() {
+        const localTraffic = JSON.parse(localStorage.getItem(STORAGE_KEY_LOCAL_TRAFFIC) || '[]');
+        const localLogins = JSON.parse(localStorage.getItem(STORAGE_KEY_LOCAL_LOGINS) || '[]');
+
+        const totalLogins = localLogins.length;
+        const successLogins = localLogins.filter(l => l.status === 'SUCCESS').length;
+        const failedLogins = localLogins.filter(l => l.status === 'FAILED').length;
+
+        const uniqueIpsSet = new Set();
+        localTraffic.forEach(t => uniqueIpsSet.add(t.ip_address));
+        localLogins.forEach(l => uniqueIpsSet.add(l.ip_address));
+
+        // Group IPs
+        const ipCounts = {};
+        const ipLastSeen = {};
+        localTraffic.forEach(t => {
+          ipCounts[t.ip_address] = (ipCounts[t.ip_address] || 0) + 1;
+          if (!ipLastSeen[t.ip_address] || t.timestamp > ipLastSeen[t.ip_address]) {
+            ipLastSeen[t.ip_address] = t.timestamp;
+          }
+        });
+
+        const ipSummary = Object.keys(ipCounts).map(ip => ({
+          ip_address: ip,
+          hits: ipCounts[ip],
+          last_seen: ipLastSeen[ip] || new Date().toISOString()
+        })).sort((a, b) => b.hits - a.hits);
+
+        currentData = {
+          stats: {
+            total_logins: totalLogins,
+            successful_logins: successLogins,
+            failed_logins: failedLogins,
+            total_pageviews: localTraffic.length,
+            unique_ips: uniqueIpsSet.size
+          },
+          ip_summary: ipSummary,
+          recent_traffic: localTraffic,
+          recent_logins: localLogins
+        };
+      }
+
+      function formatDate(isoStr) {
+        if (!isoStr) return '-';
+        try {
+          const d = new Date(isoStr);
+          return d.toLocaleString();
+        } catch (_) {
+          return isoStr;
+        }
+      }
+
+      function renderDashboard() {
+        const s = currentData.stats || {};
+        kpiTotalLogins.textContent = s.total_logins || 0;
+        kpiSuccessLogins.textContent = `${s.successful_logins || 0} Successful`;
+        kpiFailedLogins.textContent = `${s.failed_logins || 0} Failed`;
+        kpiUniqueIps.textContent = s.unique_ips || 0;
+        kpiTotalTraffic.textContent = s.total_pageviews || 0;
+
+        if (currentData.recent_traffic && currentData.recent_traffic.length > 0) {
+          const latest = currentData.recent_traffic[0];
+          kpiLastActivity.textContent = formatDate(latest.timestamp);
+          kpiRecentIp.textContent = 'IP: ' + latest.ip_address;
+        } else {
+          kpiLastActivity.textContent = 'None yet';
+          kpiRecentIp.textContent = 'Awaiting visitors';
+        }
+
+        renderIpSummaryTable();
+        renderTrafficTable();
+        renderLoginsTable();
+      }
+
+      function renderIpSummaryTable() {
+        const query = (searchIpSummary.value || '').toLowerCase();
+        const list = (currentData.ip_summary || []).filter(item => 
+          (item.ip_address || '').toLowerCase().includes(query)
+        );
+
+        if (list.length === 0) {
+          tableIpSummaryBody.innerHTML = '<tr><td colspan="4" class="empty-state">No matching IP addresses.</td></tr>';
+          return;
+        }
+
+        tableIpSummaryBody.innerHTML = list.map(item => `
+          <tr>
+            <td><span class="badge-ip">${escapeHtml(item.ip_address)}</span></td>
+            <td><strong>${item.hits}</strong></td>
+            <td>${formatDate(item.last_seen)}</td>
+            <td>
+              <a href="https://ipinfo.io/${encodeURIComponent(item.ip_address)}" target="_blank" rel="noopener noreferrer" class="ip-lookup-link">
+                Lookup Info ↗
+              </a>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      function renderTrafficTable() {
+        const query = (searchTraffic.value || '').toLowerCase();
+        const list = (currentData.recent_traffic || []).filter(item => 
+          (item.ip_address || '').toLowerCase().includes(query) ||
+          (item.path || '').toLowerCase().includes(query) ||
+          (item.user_agent || '').toLowerCase().includes(query)
+        );
+
+        if (list.length === 0) {
+          tableTrafficBody.innerHTML = '<tr><td colspan="5" class="empty-state">No traffic logs found.</td></tr>';
+          return;
+        }
+
+        tableTrafficBody.innerHTML = list.map(item => `
+          <tr>
+            <td>${formatDate(item.timestamp)}</td>
+            <td><a href="https://ipinfo.io/${encodeURIComponent(item.ip_address)}" target="_blank" rel="noopener" class="ip-lookup-link">${escapeHtml(item.ip_address)}</a></td>
+            <td><code>${escapeHtml(item.path || '/')}</code></td>
+            <td>${escapeHtml(item.referrer || 'Direct')}</td>
+            <td style="max-width: 320px; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(item.user_agent || '')}">${escapeHtml(item.user_agent || '-')}</td>
+          </tr>
+        `).join('');
+      }
+
+      function renderLoginsTable() {
+        const query = (searchLogins.value || '').toLowerCase();
+        const list = (currentData.recent_logins || []).filter(item => 
+          (item.ip_address || '').toLowerCase().includes(query) ||
+          (item.status || '').toLowerCase().includes(query)
+        );
+
+        if (list.length === 0) {
+          tableLoginsBody.innerHTML = '<tr><td colspan="4" class="empty-state">No login logs recorded.</td></tr>';
+          return;
+        }
+
+        tableLoginsBody.innerHTML = list.map(item => {
+          const isSuccess = item.status === 'SUCCESS';
+          return `
+            <tr>
+              <td>${formatDate(item.timestamp)}</td>
+              <td><span class="badge-ip">${escapeHtml(item.ip_address)}</span></td>
+              <td><span class="badge ${isSuccess ? 'badge-success' : 'badge-failed'}">${item.status}</span></td>
+              <td style="max-width: 320px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.user_agent || '-')}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>"']/g, m => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[m]);
+      }
+
+      // Search listeners
+      searchIpSummary.addEventListener('input', renderIpSummaryTable);
+      searchTraffic.addEventListener('input', renderTrafficTable);
+      searchLogins.addEventListener('input', renderLoginsTable);
+
+      // Actions
+      btnRefresh.addEventListener('click', () => {
+        btnRefresh.textContent = '⏳ Refreshing...';
+        fetchAnalytics().finally(() => {
+          btnRefresh.textContent = '🔄 Refresh';
+        });
+      });
+
+      btnLogout.addEventListener('click', () => {
+        sessionStorage.removeItem(STORAGE_KEY_TOKEN);
+        dashboardScreen.style.display = 'none';
+        authScreen.style.display = 'flex';
+        passwordInput.value = '';
+        hideAlert();
+      });
+
+      // Export Helpers
+      function exportToCsv(filename, headers, rows) {
+        const csvContent = [
+          headers.join(','),
+          ...rows.map(r => r.map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      btnExportTraffic.addEventListener('click', () => {
+        const rows = (currentData.recent_traffic || []).map(t => [
+          t.timestamp, t.ip_address, t.path, t.referrer, t.user_agent
+        ]);
+        exportToCsv('circuit_designer_traffic.csv', ['Timestamp', 'IP_Address', 'Path', 'Referrer', 'User_Agent'], rows);
+      });
+
+      btnExportLogins.addEventListener('click', () => {
+        const rows = (currentData.recent_logins || []).map(l => [
+          l.timestamp, l.ip_address, l.status, l.user_agent
+        ]);
+        exportToCsv('circuit_designer_logins.csv', ['Timestamp', 'IP_Address', 'Status', 'User_Agent'], rows);
+      });
+
+      // API Config Modal
+      btnConfigureApi.addEventListener('click', () => {
+        cfgBackendUrl.value = getBackendUrl();
+        modalApiConfig.style.display = 'flex';
+      });
+
+      btnCancelConfig.addEventListener('click', () => {
+        modalApiConfig.style.display = 'none';
+      });
+
+      btnSaveConfig.addEventListener('click', () => {
+        const val = cfgBackendUrl.value.trim();
+        if (val) {
+          localStorage.setItem(STORAGE_KEY_BACKEND, val);
+        } else {
+          localStorage.removeItem(STORAGE_KEY_BACKEND);
+        }
+        modalApiConfig.style.display = 'none';
+        fetchAnalytics();
+      });
+
+      // Auto login if session already exists
+      if (sessionStorage.getItem(STORAGE_KEY_TOKEN)) {
+        unlockDashboard();
+      }
+    })();
+  </script>
+</body>
+</html>

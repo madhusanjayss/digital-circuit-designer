@@ -26,7 +26,13 @@ export const ComponentTypes = {
   VCC_NEG_12: 'VCC_NEG_12',
   CLOCK: 'CLOCK',
   SR_LATCH: 'SR_LATCH',
-  D_LATCH: 'D_LATCH'
+  GATED_LATCH: 'GATED_LATCH',
+  D_LATCH: 'D_LATCH',
+  JK_LATCH: 'JK_LATCH',
+  SR_FLIPFLOP: 'SR_FLIPFLOP',
+  JK_FLIPFLOP: 'JK_FLIPFLOP',
+  D_FLIPFLOP: 'D_FLIPFLOP',
+  T_FLIPFLOP: 'T_FLIPFLOP'
 };
 
 export const SUPPORTED_COMPONENT_TYPES = new Set([...Object.values(ComponentTypes), 'WIRE', 'wire']);
@@ -469,9 +475,78 @@ export function getComponentPinSpecs(type, comp = null) {
     case ComponentTypes.SR_LATCH:
       return {
         inputs: [
+          { id: 'in_s', label: 'S', dx: -40, dy: -14, type: 'in' },
+          { id: 'in_r', label: 'R', dx: -40, dy: 14, type: 'in' }
+        ],
+        outputs: [
+          { id: 'out_q', label: 'Q', dx: 40, dy: -12, type: 'out' },
+          { id: 'out_qbar', label: 'Q̅', dx: 40, dy: 12, type: 'out' }
+        ]
+      };
+    case ComponentTypes.GATED_LATCH:
+      return {
+        inputs: [
           { id: 'in_s', label: 'S', dx: -40, dy: -16, type: 'in' },
           { id: 'in_en', label: 'EN', dx: -40, dy: 0, type: 'in' },
           { id: 'in_r', label: 'R', dx: -40, dy: 16, type: 'in' }
+        ],
+        outputs: [
+          { id: 'out_q', label: 'Q', dx: 40, dy: -12, type: 'out' },
+          { id: 'out_qbar', label: 'Q̅', dx: 40, dy: 12, type: 'out' }
+        ]
+      };
+    case ComponentTypes.JK_LATCH:
+      return {
+        inputs: [
+          { id: 'in_j', label: 'J', dx: -40, dy: -16, type: 'in' },
+          { id: 'in_en', label: 'EN', dx: -40, dy: 0, type: 'in' },
+          { id: 'in_k', label: 'K', dx: -40, dy: 16, type: 'in' }
+        ],
+        outputs: [
+          { id: 'out_q', label: 'Q', dx: 40, dy: -12, type: 'out' },
+          { id: 'out_qbar', label: 'Q̅', dx: 40, dy: 12, type: 'out' }
+        ]
+      };
+    case ComponentTypes.SR_FLIPFLOP:
+      return {
+        inputs: [
+          { id: 'in_s', label: 'S', dx: -40, dy: -16, type: 'in' },
+          { id: 'in_clk', label: 'CLK', dx: -40, dy: 0, type: 'in', isClock: true },
+          { id: 'in_r', label: 'R', dx: -40, dy: 16, type: 'in' }
+        ],
+        outputs: [
+          { id: 'out_q', label: 'Q', dx: 40, dy: -12, type: 'out' },
+          { id: 'out_qbar', label: 'Q̅', dx: 40, dy: 12, type: 'out' }
+        ]
+      };
+    case ComponentTypes.JK_FLIPFLOP:
+      return {
+        inputs: [
+          { id: 'in_j', label: 'J', dx: -40, dy: -16, type: 'in' },
+          { id: 'in_clk', label: 'CLK', dx: -40, dy: 0, type: 'in', isClock: true },
+          { id: 'in_k', label: 'K', dx: -40, dy: 16, type: 'in' }
+        ],
+        outputs: [
+          { id: 'out_q', label: 'Q', dx: 40, dy: -12, type: 'out' },
+          { id: 'out_qbar', label: 'Q̅', dx: 40, dy: 12, type: 'out' }
+        ]
+      };
+    case ComponentTypes.D_FLIPFLOP:
+      return {
+        inputs: [
+          { id: 'in_d', label: 'D', dx: -40, dy: -12, type: 'in' },
+          { id: 'in_clk', label: 'CLK', dx: -40, dy: 12, type: 'in', isClock: true }
+        ],
+        outputs: [
+          { id: 'out_q', label: 'Q', dx: 40, dy: -12, type: 'out' },
+          { id: 'out_qbar', label: 'Q̅', dx: 40, dy: 12, type: 'out' }
+        ]
+      };
+    case ComponentTypes.T_FLIPFLOP:
+      return {
+        inputs: [
+          { id: 'in_t', label: 'T', dx: -40, dy: -12, type: 'in' },
+          { id: 'in_clk', label: 'CLK', dx: -40, dy: 12, type: 'in', isClock: true }
         ],
         outputs: [
           { id: 'out_q', label: 'Q', dx: 40, dy: -12, type: 'out' },
@@ -646,11 +721,15 @@ export function getComponentBounds(comp, renderer = null) {
     };
   }
 
-  if (comp.type === ComponentTypes.D_LATCH || comp.type === ComponentTypes.SR_LATCH) {
+  if (comp.type === ComponentTypes.D_LATCH || comp.type === ComponentTypes.SR_LATCH ||
+      comp.type === ComponentTypes.GATED_LATCH || comp.type === ComponentTypes.JK_LATCH ||
+      comp.type === ComponentTypes.SR_FLIPFLOP ||
+      comp.type === ComponentTypes.JK_FLIPFLOP || comp.type === ComponentTypes.D_FLIPFLOP ||
+      comp.type === ComponentTypes.T_FLIPFLOP) {
     const rot = comp.rotation || 0;
     const isVertical = rot === 90 || rot === 270;
     const compW = 84;
-    const compH = 68;
+    const compH = 72;
     const halfW = (isVertical ? compH : compW) / 2;
     const halfH = (isVertical ? compW : compH) / 2;
     return {
@@ -1040,15 +1119,16 @@ export function getComponentSVGMarkup(comp, isSelected = false) {
 
     case ComponentTypes.CLOCK: {
       const isHigh = comp.value === 1;
-      const isRunning = !!comp.running;
-      const pulseActive = !!comp.activePulse;
+      const pulseActive = !!comp.activePulse || !!comp._pulsing;
       const outClkHigh = comp.value === 1;
       const outNclkHigh = !outClkHigh;
       bodyMarkup = `
         <rect x="-38" y="-28" width="76" height="56" rx="6" class="component-body clock-body" fill="#ffffff" stroke="${isHigh ? '#10b981' : '#1e293b'}" stroke-width="2.5"/>
-        <text x="0" y="-17" text-anchor="middle" font-size="9" font-weight="800" fill="#0f172a" letter-spacing="0.5">CLOCK</text>
+        <text x="6" y="-17" text-anchor="middle" font-size="9" font-weight="800" fill="#0f172a" letter-spacing="0.5">CLOCK</text>
+        <!-- State indicator badge text on component -->
+        <text x="-24" y="-17" text-anchor="middle" font-size="7.5" font-weight="800" fill="${isHigh ? '#059669' : '#94a3b8'}">${isHigh ? 'HIGH' : 'LOW'}</text>
         <!-- Interactive Manual Trigger Push Button -->
-        <g class="clock-push-btn" data-comp-id="${escapeSvgText(comp.id)}" style="cursor: pointer;">
+        <g class="clock-push-btn" data-comp-id="${escapeSvgText(comp.id)}" style="cursor: ${pulseActive ? 'not-allowed' : 'pointer'};">
           <rect x="-26" y="-7" width="52" height="20" rx="4" 
                 fill="${pulseActive ? '#3b82f6' : (isHigh ? '#dcfce7' : '#eff6ff')}" 
                 stroke="${pulseActive ? '#1d4ed8' : (isHigh ? '#10b981' : '#3b82f6')}" 
@@ -1064,8 +1144,6 @@ export function getComponentSVGMarkup(comp, isSelected = false) {
         <!-- Pin connection leads -->
         <line x1="32" y1="-12" x2="38" y2="-12" stroke="${outClkHigh ? '#10b981' : '#64748b'}" stroke-width="2"/>
         <line x1="32" y1="12" x2="38" y2="12" stroke="${outNclkHigh ? '#10b981' : '#64748b'}" stroke-width="2"/>
-        <!-- Running mode indicator dot -->
-        ${isRunning ? `<circle cx="-28" cy="-18" r="3" fill="#22c55e" stroke="#ffffff" stroke-width="1"><title>Continuous Running</title></circle>` : ''}
       `;
       break;
     }
@@ -1099,8 +1177,33 @@ export function getComponentSVGMarkup(comp, isSelected = false) {
       const isInvalid = comp.state?.invalid === true;
       const isHigh = qVal === 1;
       bodyMarkup = `
+        <rect x="-40" y="-30" width="80" height="60" rx="6" class="component-body latch-body" fill="#ffffff" stroke="#1e293b" stroke-width="2.5"/>
+        <text x="0" y="-16" text-anchor="middle" font-size="10" font-weight="800" fill="#0f172a" letter-spacing="0.5">SR LATCH</text>
+        <!-- Input pin labels -->
+        <text x="-32" y="-10" text-anchor="start" font-size="9" font-weight="700" fill="#475569">S</text>
+        <text x="-32" y="18" text-anchor="start" font-size="9" font-weight="700" fill="#475569">R</text>
+        <!-- Output pin labels -->
+        <text x="32" y="-9" text-anchor="end" font-size="9" font-weight="700" fill="#475569">Q</text>
+        <text x="32" y="15" text-anchor="end" font-size="9" font-weight="700" fill="#475569">Q̅</text>
+        <!-- Pin connection lead lines -->
+        <line x1="-40" y1="-14" x2="-35" y2="-14" stroke="#334155" stroke-width="2"/>
+        <line x1="-40" y1="14" x2="-35" y2="14" stroke="#334155" stroke-width="2"/>
+        <line x1="35" y1="-12" x2="40" y2="-12" stroke="#334155" stroke-width="2"/>
+        <line x1="35" y1="12" x2="40" y2="12" stroke="#334155" stroke-width="2"/>
+        <!-- Center State Indicator -->
+        <rect x="-18" y="-4" width="36" height="18" rx="3" fill="${isInvalid ? '#fee2e2' : (isHigh ? '#dcfce7' : '#f1f5f9')}" stroke="${isInvalid ? '#ef4444' : (isHigh ? '#10b981' : '#cbd5e1')}" stroke-width="1.5"/>
+        <text x="0" y="9" text-anchor="middle" font-size="9" font-weight="800" fill="${isInvalid ? '#b91c1c' : (isHigh ? '#047857' : '#334155')}">${isInvalid ? 'INV' : `Q:${qVal}`}</text>
+      `;
+      break;
+    }
+
+    case ComponentTypes.GATED_LATCH: {
+      const qVal = comp.state?.Q ?? 0;
+      const isInvalid = comp.state?.invalid === true;
+      const isHigh = qVal === 1;
+      bodyMarkup = `
         <rect x="-40" y="-32" width="80" height="64" rx="6" class="component-body latch-body" fill="#ffffff" stroke="#1e293b" stroke-width="2.5"/>
-        <text x="0" y="-20" text-anchor="middle" font-size="10" font-weight="800" fill="#0f172a" letter-spacing="0.5">SR LATCH</text>
+        <text x="0" y="-20" text-anchor="middle" font-size="10" font-weight="800" fill="#0f172a" letter-spacing="0.5">GATED LATCH</text>
         <!-- Input pin labels -->
         <text x="-32" y="-13" text-anchor="start" font-size="9" font-weight="700" fill="#475569">S</text>
         <text x="-32" y="3" text-anchor="start" font-size="8" font-weight="700" fill="#475569">EN</text>
@@ -1117,6 +1220,133 @@ export function getComponentSVGMarkup(comp, isSelected = false) {
         <!-- Center State Indicator -->
         <rect x="-18" y="-4" width="36" height="18" rx="3" fill="${isInvalid ? '#fee2e2' : (isHigh ? '#dcfce7' : '#f1f5f9')}" stroke="${isInvalid ? '#ef4444' : (isHigh ? '#10b981' : '#cbd5e1')}" stroke-width="1.5"/>
         <text x="0" y="9" text-anchor="middle" font-size="9" font-weight="800" fill="${isInvalid ? '#b91c1c' : (isHigh ? '#047857' : '#334155')}">${isInvalid ? 'INV' : `Q:${qVal}`}</text>
+      `;
+      break;
+    }
+
+    case ComponentTypes.JK_LATCH: {
+      const qVal = comp.state?.Q ?? 0;
+      const isHigh = qVal === 1;
+      bodyMarkup = `
+        <rect x="-40" y="-32" width="80" height="64" rx="6" class="component-body latch-body" fill="#ffffff" stroke="#1e293b" stroke-width="2.5"/>
+        <text x="0" y="-20" text-anchor="middle" font-size="10" font-weight="800" fill="#0f172a" letter-spacing="0.5">JK LATCH</text>
+        <!-- Input pin labels -->
+        <text x="-32" y="-13" text-anchor="start" font-size="9" font-weight="700" fill="#475569">J</text>
+        <text x="-32" y="3" text-anchor="start" font-size="8" font-weight="700" fill="#475569">EN</text>
+        <text x="-32" y="19" text-anchor="start" font-size="9" font-weight="700" fill="#475569">K</text>
+        <!-- Output pin labels -->
+        <text x="32" y="-9" text-anchor="end" font-size="9" font-weight="700" fill="#475569">Q</text>
+        <text x="32" y="15" text-anchor="end" font-size="9" font-weight="700" fill="#475569">Q̅</text>
+        <!-- Pin connection lead lines -->
+        <line x1="-40" y1="-16" x2="-35" y2="-16" stroke="#334155" stroke-width="2"/>
+        <line x1="-40" y1="0" x2="-35" y2="0" stroke="#334155" stroke-width="2"/>
+        <line x1="-40" y1="16" x2="-35" y2="16" stroke="#334155" stroke-width="2"/>
+        <line x1="35" y1="-12" x2="40" y2="-12" stroke="#334155" stroke-width="2"/>
+        <line x1="35" y1="12" x2="40" y2="12" stroke="#334155" stroke-width="2"/>
+        <!-- Center State Indicator -->
+        <rect x="-14" y="-2" width="28" height="18" rx="3" fill="${isHigh ? '#dcfce7' : '#f1f5f9'}" stroke="${isHigh ? '#10b981' : '#cbd5e1'}" stroke-width="1.5"/>
+        <text x="0" y="11" text-anchor="middle" font-size="10" font-weight="800" fill="${isHigh ? '#047857' : '#334155'}">Q:${qVal}</text>
+      `;
+      break;
+    }
+
+    case ComponentTypes.SR_FLIPFLOP: {
+      const qVal = comp.state?.Q ?? 0;
+      const isInvalid = comp.state?.invalid === true;
+      const isHigh = qVal === 1;
+      bodyMarkup = `
+        <rect x="-40" y="-32" width="80" height="64" rx="6" class="component-body ff-body" fill="#ffffff" stroke="#1e293b" stroke-width="2.5"/>
+        <text x="0" y="-20" text-anchor="middle" font-size="10" font-weight="800" fill="#0f172a" letter-spacing="0.5">SR FF</text>
+        <!-- Input pin labels -->
+        <text x="-32" y="-13" text-anchor="start" font-size="9" font-weight="700" fill="#475569">S</text>
+        <!-- Clock dynamic input chevron '>' -->
+        <path d="M -40 -6 L -32 0 L -40 6" fill="none" stroke="#334155" stroke-width="2"/>
+        <text x="-32" y="19" text-anchor="start" font-size="9" font-weight="700" fill="#475569">R</text>
+        <!-- Output pin labels -->
+        <text x="32" y="-9" text-anchor="end" font-size="9" font-weight="700" fill="#475569">Q</text>
+        <text x="32" y="15" text-anchor="end" font-size="9" font-weight="700" fill="#475569">Q̅</text>
+        <!-- Pin connection lead lines -->
+        <line x1="-40" y1="-16" x2="-35" y2="-16" stroke="#334155" stroke-width="2"/>
+        <line x1="-40" y1="16" x2="-35" y2="16" stroke="#334155" stroke-width="2"/>
+        <line x1="35" y1="-12" x2="40" y2="-12" stroke="#334155" stroke-width="2"/>
+        <line x1="35" y1="12" x2="40" y2="12" stroke="#334155" stroke-width="2"/>
+        <!-- Center State Indicator -->
+        <rect x="-18" y="-4" width="36" height="18" rx="3" fill="${isInvalid ? '#fee2e2' : (isHigh ? '#dcfce7' : '#f1f5f9')}" stroke="${isInvalid ? '#ef4444' : (isHigh ? '#10b981' : '#cbd5e1')}" stroke-width="1.5"/>
+        <text x="0" y="9" text-anchor="middle" font-size="9" font-weight="800" fill="${isInvalid ? '#b91c1c' : (isHigh ? '#047857' : '#334155')}">${isInvalid ? 'INV' : `Q:${qVal}`}</text>
+      `;
+      break;
+    }
+
+    case ComponentTypes.JK_FLIPFLOP: {
+      const qVal = comp.state?.Q ?? 0;
+      const isHigh = qVal === 1;
+      bodyMarkup = `
+        <rect x="-40" y="-32" width="80" height="64" rx="6" class="component-body ff-body" fill="#ffffff" stroke="#1e293b" stroke-width="2.5"/>
+        <text x="0" y="-20" text-anchor="middle" font-size="10" font-weight="800" fill="#0f172a" letter-spacing="0.5">JK FF</text>
+        <!-- Input pin labels -->
+        <text x="-32" y="-13" text-anchor="start" font-size="9" font-weight="700" fill="#475569">J</text>
+        <!-- Clock dynamic input chevron '>' -->
+        <path d="M -40 -6 L -32 0 L -40 6" fill="none" stroke="#334155" stroke-width="2"/>
+        <text x="-32" y="19" text-anchor="start" font-size="9" font-weight="700" fill="#475569">K</text>
+        <!-- Output pin labels -->
+        <text x="32" y="-9" text-anchor="end" font-size="9" font-weight="700" fill="#475569">Q</text>
+        <text x="32" y="15" text-anchor="end" font-size="9" font-weight="700" fill="#475569">Q̅</text>
+        <!-- Pin connection lead lines -->
+        <line x1="-40" y1="-16" x2="-35" y2="-16" stroke="#334155" stroke-width="2"/>
+        <line x1="-40" y1="16" x2="-35" y2="16" stroke="#334155" stroke-width="2"/>
+        <line x1="35" y1="-12" x2="40" y2="-12" stroke="#334155" stroke-width="2"/>
+        <line x1="35" y1="12" x2="40" y2="12" stroke="#334155" stroke-width="2"/>
+        <!-- Center State Indicator -->
+        <rect x="-14" y="-2" width="28" height="18" rx="3" fill="${isHigh ? '#dcfce7' : '#f1f5f9'}" stroke="${isHigh ? '#10b981' : '#cbd5e1'}" stroke-width="1.5"/>
+        <text x="0" y="11" text-anchor="middle" font-size="10" font-weight="800" fill="${isHigh ? '#047857' : '#334155'}">Q:${qVal}</text>
+      `;
+      break;
+    }
+
+    case ComponentTypes.D_FLIPFLOP: {
+      const qVal = comp.state?.Q ?? 0;
+      const isHigh = qVal === 1;
+      bodyMarkup = `
+        <rect x="-40" y="-30" width="80" height="60" rx="6" class="component-body ff-body" fill="#ffffff" stroke="#1e293b" stroke-width="2.5"/>
+        <text x="0" y="-16" text-anchor="middle" font-size="10" font-weight="800" fill="#0f172a" letter-spacing="0.5">D FF</text>
+        <!-- Input pin labels -->
+        <text x="-32" y="-9" text-anchor="start" font-size="9" font-weight="700" fill="#475569">D</text>
+        <!-- Clock dynamic input chevron '>' -->
+        <path d="M -40 6 L -32 12 L -40 18" fill="none" stroke="#334155" stroke-width="2"/>
+        <!-- Output pin labels -->
+        <text x="32" y="-9" text-anchor="end" font-size="9" font-weight="700" fill="#475569">Q</text>
+        <text x="32" y="15" text-anchor="end" font-size="9" font-weight="700" fill="#475569">Q̅</text>
+        <!-- Pin connection lead lines -->
+        <line x1="-40" y1="-12" x2="-35" y2="-12" stroke="#334155" stroke-width="2"/>
+        <line x1="35" y1="-12" x2="40" y2="-12" stroke="#334155" stroke-width="2"/>
+        <line x1="35" y1="12" x2="40" y2="12" stroke="#334155" stroke-width="2"/>
+        <!-- Center State Indicator -->
+        <rect x="-14" y="-2" width="28" height="18" rx="3" fill="${isHigh ? '#dcfce7' : '#f1f5f9'}" stroke="${isHigh ? '#10b981' : '#cbd5e1'}" stroke-width="1.5"/>
+        <text x="0" y="11" text-anchor="middle" font-size="10" font-weight="800" fill="${isHigh ? '#047857' : '#334155'}">Q:${qVal}</text>
+      `;
+      break;
+    }
+
+    case ComponentTypes.T_FLIPFLOP: {
+      const qVal = comp.state?.Q ?? 0;
+      const isHigh = qVal === 1;
+      bodyMarkup = `
+        <rect x="-40" y="-30" width="80" height="60" rx="6" class="component-body ff-body" fill="#ffffff" stroke="#1e293b" stroke-width="2.5"/>
+        <text x="0" y="-16" text-anchor="middle" font-size="10" font-weight="800" fill="#0f172a" letter-spacing="0.5">T FF</text>
+        <!-- Input pin labels -->
+        <text x="-32" y="-9" text-anchor="start" font-size="9" font-weight="700" fill="#475569">T</text>
+        <!-- Clock dynamic input chevron '>' -->
+        <path d="M -40 6 L -32 12 L -40 18" fill="none" stroke="#334155" stroke-width="2"/>
+        <!-- Output pin labels -->
+        <text x="32" y="-9" text-anchor="end" font-size="9" font-weight="700" fill="#475569">Q</text>
+        <text x="32" y="15" text-anchor="end" font-size="9" font-weight="700" fill="#475569">Q̅</text>
+        <!-- Pin connection lead lines -->
+        <line x1="-40" y1="-12" x2="-35" y2="-12" stroke="#334155" stroke-width="2"/>
+        <line x1="35" y1="-12" x2="40" y2="-12" stroke="#334155" stroke-width="2"/>
+        <line x1="35" y1="12" x2="40" y2="12" stroke="#334155" stroke-width="2"/>
+        <!-- Center State Indicator -->
+        <rect x="-14" y="-2" width="28" height="18" rx="3" fill="${isHigh ? '#dcfce7' : '#f1f5f9'}" stroke="${isHigh ? '#10b981' : '#cbd5e1'}" stroke-width="1.5"/>
+        <text x="0" y="11" text-anchor="middle" font-size="10" font-weight="800" fill="${isHigh ? '#047857' : '#334155'}">Q:${qVal}</text>
       `;
       break;
     }

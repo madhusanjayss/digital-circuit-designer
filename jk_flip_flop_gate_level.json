@@ -1,0 +1,341 @@
+{
+  "version": 1,
+  "components": [
+    {
+      "id": "comp_in_j",
+      "type": "INPUT",
+      "x": 80,
+      "y": 100,
+      "rotation": 0,
+      "value": 1,
+      "name": "J"
+    },
+    {
+      "id": "comp_clk",
+      "type": "CLOCK",
+      "x": 80,
+      "y": 260,
+      "rotation": 0,
+      "value": 0,
+      "name": "CLK",
+      "frequency": 1,
+      "period": 1000,
+      "dutyCycle": 50,
+      "running": false,
+      "pulseType": "HIGH",
+      "pulseDuration": 200
+    },
+    {
+      "id": "comp_in_k",
+      "type": "INPUT",
+      "x": 80,
+      "y": 420,
+      "rotation": 0,
+      "value": 1,
+      "name": "K"
+    },
+    {
+      "id": "comp_inv_clk",
+      "type": "NOT",
+      "x": 180,
+      "y": 260,
+      "rotation": 0,
+      "value": 1,
+      "name": "INV_CLK"
+    },
+    {
+      "id": "comp_and_j1",
+      "type": "AND",
+      "x": 260,
+      "y": 100,
+      "rotation": 0,
+      "value": 1,
+      "name": "AND_J1"
+    },
+    {
+      "id": "comp_and_j2",
+      "type": "AND",
+      "x": 360,
+      "y": 120,
+      "rotation": 0,
+      "value": 0,
+      "name": "AND_J2"
+    },
+    {
+      "id": "comp_and_k1",
+      "type": "AND",
+      "x": 260,
+      "y": 400,
+      "rotation": 0,
+      "value": 0,
+      "name": "AND_K1"
+    },
+    {
+      "id": "comp_and_k2",
+      "type": "AND",
+      "x": 360,
+      "y": 380,
+      "rotation": 0,
+      "value": 0,
+      "name": "AND_K2"
+    },
+    {
+      "id": "comp_nor_m1",
+      "type": "NOR",
+      "x": 480,
+      "y": 150,
+      "rotation": 0,
+      "value": 0,
+      "name": "NOR_M1"
+    },
+    {
+      "id": "comp_nor_m2",
+      "type": "NOR",
+      "x": 480,
+      "y": 350,
+      "rotation": 0,
+      "value": 1,
+      "name": "NOR_M2"
+    },
+    {
+      "id": "comp_and_s1",
+      "type": "AND",
+      "x": 600,
+      "y": 170,
+      "rotation": 0,
+      "value": 0,
+      "name": "AND_S1"
+    },
+    {
+      "id": "comp_and_s2",
+      "type": "AND",
+      "x": 600,
+      "y": 330,
+      "rotation": 0,
+      "value": 1,
+      "name": "AND_S2"
+    },
+    {
+      "id": "comp_nor_s1",
+      "type": "NOR",
+      "x": 720,
+      "y": 200,
+      "rotation": 0,
+      "value": 0,
+      "name": "NOR_S1"
+    },
+    {
+      "id": "comp_nor_s2",
+      "type": "NOR",
+      "x": 720,
+      "y": 300,
+      "rotation": 0,
+      "value": 1,
+      "name": "NOR_S2"
+    },
+    {
+      "id": "comp_out_q",
+      "type": "OUTPUT",
+      "x": 860,
+      "y": 200,
+      "rotation": 0,
+      "value": 0,
+      "name": "Q"
+    },
+    {
+      "id": "comp_out_qbar",
+      "type": "OUTPUT",
+      "x": 860,
+      "y": 300,
+      "rotation": 0,
+      "value": 1,
+      "name": "Q̅"
+    }
+  ],
+  "connections": [
+    {
+      "id": "w_clk_inv",
+      "fromCompId": "comp_clk",
+      "fromPinId": "out0",
+      "toCompId": "comp_inv_clk",
+      "toPinId": "in0",
+      "state": 0
+    },
+    {
+      "id": "w_in_j_and1",
+      "fromCompId": "comp_in_j",
+      "fromPinId": "out0",
+      "toCompId": "comp_and_j1",
+      "toPinId": "in0",
+      "state": 1
+    },
+    {
+      "id": "w_and_j1_j2",
+      "fromCompId": "comp_and_j1",
+      "fromPinId": "out0",
+      "toCompId": "comp_and_j2",
+      "toPinId": "in0",
+      "state": 1
+    },
+    {
+      "id": "w_clk_and_j2",
+      "fromCompId": "comp_clk",
+      "fromPinId": "out0",
+      "toCompId": "comp_and_j2",
+      "toPinId": "in1",
+      "state": 0
+    },
+    {
+      "id": "w_in_k_and1",
+      "fromCompId": "comp_in_k",
+      "fromPinId": "out0",
+      "toCompId": "comp_and_k1",
+      "toPinId": "in0",
+      "state": 1
+    },
+    {
+      "id": "w_and_k1_k2",
+      "fromCompId": "comp_and_k1",
+      "fromPinId": "out0",
+      "toCompId": "comp_and_k2",
+      "toPinId": "in0",
+      "state": 0
+    },
+    {
+      "id": "w_clk_and_k2",
+      "fromCompId": "comp_clk",
+      "fromPinId": "out0",
+      "toCompId": "comp_and_k2",
+      "toPinId": "in1",
+      "state": 0
+    },
+    {
+      "id": "w_k2_nor_m1",
+      "fromCompId": "comp_and_k2",
+      "fromPinId": "out0",
+      "toCompId": "comp_nor_m1",
+      "toPinId": "in0",
+      "state": 0
+    },
+    {
+      "id": "w_nor_m2_m1",
+      "fromCompId": "comp_nor_m2",
+      "fromPinId": "out0",
+      "toCompId": "comp_nor_m1",
+      "toPinId": "in1",
+      "state": 1
+    },
+    {
+      "id": "w_j2_nor_m2",
+      "fromCompId": "comp_and_j2",
+      "fromPinId": "out0",
+      "toCompId": "comp_nor_m2",
+      "toPinId": "in0",
+      "state": 0
+    },
+    {
+      "id": "w_nor_m1_m2",
+      "fromCompId": "comp_nor_m1",
+      "fromPinId": "out0",
+      "toCompId": "comp_nor_m2",
+      "toPinId": "in1",
+      "state": 0
+    },
+    {
+      "id": "w_m1_s1",
+      "fromCompId": "comp_nor_m1",
+      "fromPinId": "out0",
+      "toCompId": "comp_and_s1",
+      "toPinId": "in0",
+      "state": 0
+    },
+    {
+      "id": "w_invclk_s1",
+      "fromCompId": "comp_inv_clk",
+      "fromPinId": "out0",
+      "toCompId": "comp_and_s1",
+      "toPinId": "in1",
+      "state": 1
+    },
+    {
+      "id": "w_m2_s2",
+      "fromCompId": "comp_nor_m2",
+      "fromPinId": "out0",
+      "toCompId": "comp_and_s2",
+      "toPinId": "in0",
+      "state": 1
+    },
+    {
+      "id": "w_invclk_s2",
+      "fromCompId": "comp_inv_clk",
+      "fromPinId": "out0",
+      "toCompId": "comp_and_s2",
+      "toPinId": "in1",
+      "state": 1
+    },
+    {
+      "id": "w_s2_nor_s1",
+      "fromCompId": "comp_and_s2",
+      "fromPinId": "out0",
+      "toCompId": "comp_nor_s1",
+      "toPinId": "in0",
+      "state": 1
+    },
+    {
+      "id": "w_nor_s2_s1",
+      "fromCompId": "comp_nor_s2",
+      "fromPinId": "out0",
+      "toCompId": "comp_nor_s1",
+      "toPinId": "in1",
+      "state": 1
+    },
+    {
+      "id": "w_s1_nor_s2",
+      "fromCompId": "comp_and_s1",
+      "fromPinId": "out0",
+      "toCompId": "comp_nor_s2",
+      "toPinId": "in0",
+      "state": 0
+    },
+    {
+      "id": "w_nor_s1_s2",
+      "fromCompId": "comp_nor_s1",
+      "fromPinId": "out0",
+      "toCompId": "comp_nor_s2",
+      "toPinId": "in1",
+      "state": 0
+    },
+    {
+      "id": "w_fb_q_k1",
+      "fromCompId": "comp_nor_s1",
+      "fromPinId": "out0",
+      "toCompId": "comp_and_k1",
+      "toPinId": "in1",
+      "state": 0
+    },
+    {
+      "id": "w_fb_qbar_j1",
+      "fromCompId": "comp_nor_s2",
+      "fromPinId": "out0",
+      "toCompId": "comp_and_j1",
+      "toPinId": "in1",
+      "state": 1
+    },
+    {
+      "id": "w_s1_out_q",
+      "fromCompId": "comp_nor_s1",
+      "fromPinId": "out0",
+      "toCompId": "comp_out_q",
+      "toPinId": "in0",
+      "state": 0
+    },
+    {
+      "id": "w_s2_out_qbar",
+      "fromCompId": "comp_nor_s2",
+      "fromPinId": "out0",
+      "toCompId": "comp_out_qbar",
+      "toPinId": "in0",
+      "state": 1
+    }
+  ]
+}

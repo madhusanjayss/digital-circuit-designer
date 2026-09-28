@@ -225,6 +225,46 @@ export function migrateCircuitData(rawData) {
       const qbar = normalizeSignalValue(comp.state?.Qbar ?? (1 - q));
       migrated.state = { Q: q, Qbar: qbar, invalid: !!comp.state?.invalid };
       migrated.value = q;
+    } else if (migrated.type === ComponentTypes.GATED_LATCH) {
+      if (!migrated.name) migrated.name = 'GATED_LATCH';
+      const q = normalizeSignalValue(comp.state?.Q ?? 0);
+      const qbar = normalizeSignalValue(comp.state?.Qbar ?? (1 - q));
+      migrated.state = { Q: q, Qbar: qbar, invalid: !!comp.state?.invalid };
+      migrated.value = q;
+    } else if (migrated.type === ComponentTypes.JK_LATCH) {
+      if (!migrated.name) migrated.name = 'JK_LATCH';
+      const q = normalizeSignalValue(comp.state?.Q ?? 0);
+      const qbar = normalizeSignalValue(comp.state?.Qbar ?? (1 - q));
+      migrated.state = { Q: q, Qbar: qbar };
+      migrated.value = q;
+    } else if (migrated.type === ComponentTypes.SR_FLIPFLOP) {
+      if (!migrated.name) migrated.name = 'SR_FF';
+      const q = normalizeSignalValue(comp.state?.Q ?? 0);
+      const qbar = normalizeSignalValue(comp.state?.Qbar ?? (1 - q));
+      migrated.state = { Q: q, Qbar: qbar, invalid: !!comp.state?.invalid };
+      migrated.trigger = comp.trigger || 'rising';
+      migrated.value = q;
+    } else if (migrated.type === ComponentTypes.JK_FLIPFLOP) {
+      if (!migrated.name) migrated.name = 'JK_FF';
+      const q = normalizeSignalValue(comp.state?.Q ?? 0);
+      const qbar = normalizeSignalValue(comp.state?.Qbar ?? (1 - q));
+      migrated.state = { Q: q, Qbar: qbar };
+      migrated.trigger = comp.trigger || 'rising';
+      migrated.value = q;
+    } else if (migrated.type === ComponentTypes.D_FLIPFLOP) {
+      if (!migrated.name) migrated.name = 'D_FF';
+      const q = normalizeSignalValue(comp.state?.Q ?? 0);
+      const qbar = normalizeSignalValue(comp.state?.Qbar ?? (1 - q));
+      migrated.state = { Q: q, Qbar: qbar };
+      migrated.trigger = comp.trigger || 'rising';
+      migrated.value = q;
+    } else if (migrated.type === ComponentTypes.T_FLIPFLOP) {
+      if (!migrated.name) migrated.name = 'T_FF';
+      const q = normalizeSignalValue(comp.state?.Q ?? 0);
+      const qbar = normalizeSignalValue(comp.state?.Qbar ?? (1 - q));
+      migrated.state = { Q: q, Qbar: qbar };
+      migrated.trigger = comp.trigger || 'rising';
+      migrated.value = q;
     } else {
       if (!migrated.name) migrated.name = migrated.type || 'COMP';
     }
@@ -990,10 +1030,22 @@ export class Circuit {
         comp.state = { Q: 0, Qbar: 1 };
         comp.value = 0;
         delete comp.nextState;
-      } else if (comp.type === ComponentTypes.SR_LATCH) {
+      } else if (comp.type === ComponentTypes.SR_LATCH || comp.type === ComponentTypes.GATED_LATCH) {
         comp.state = { Q: 0, Qbar: 1, invalid: false };
         comp.value = 0;
+        comp._prevClk = 0;
         delete comp.nextState;
+      } else if (comp.type === ComponentTypes.JK_LATCH) {
+        comp.state = { Q: 0, Qbar: 1 };
+        comp.value = 0;
+        delete comp.nextState;
+      } else if (comp.type === ComponentTypes.SR_FLIPFLOP || comp.type === ComponentTypes.JK_FLIPFLOP || comp.type === ComponentTypes.D_FLIPFLOP || comp.type === ComponentTypes.T_FLIPFLOP) {
+        comp.state = { Q: 0, Qbar: 1, invalid: false };
+        comp.value = 0;
+        comp._prevClk = 0;
+        delete comp.nextState;
+      } else {
+        comp.value = 0;
       }
     });
   }
@@ -1081,8 +1133,17 @@ export class Circuit {
       ...(type === ComponentTypes.D_LATCH ? {
         state: { Q: 0, Qbar: 1 }
       } : {}),
-      ...(type === ComponentTypes.SR_LATCH ? {
-        state: { Q: 0, Qbar: 1, invalid: false }
+      ...(type === ComponentTypes.SR_LATCH || type === ComponentTypes.GATED_LATCH ? {
+        state: { Q: 0, Qbar: 1, invalid: false },
+        _prevClk: 0
+      } : {}),
+      ...(type === ComponentTypes.JK_LATCH ? {
+        state: { Q: 0, Qbar: 1 }
+      } : {}),
+      ...(type === ComponentTypes.SR_FLIPFLOP || type === ComponentTypes.JK_FLIPFLOP || type === ComponentTypes.D_FLIPFLOP || type === ComponentTypes.T_FLIPFLOP ? {
+        state: { Q: 0, Qbar: 1, invalid: false },
+        trigger: 'rising',
+        _prevClk: 0
       } : {})
     };
 
@@ -1322,8 +1383,13 @@ export class Circuit {
             pulseType: comp.pulseType || 'HIGH',
             pulseDuration: comp.pulseDuration ?? 100
           } : {}),
-          ...(comp.type === ComponentTypes.D_LATCH || comp.type === ComponentTypes.SR_LATCH ? {
-            state: cloneData(comp.state || { Q: 0, Qbar: 1 })
+          ...(comp.type === ComponentTypes.D_LATCH || comp.type === ComponentTypes.SR_LATCH ||
+              comp.type === ComponentTypes.GATED_LATCH || comp.type === ComponentTypes.JK_LATCH ||
+              comp.type === ComponentTypes.SR_FLIPFLOP ||
+              comp.type === ComponentTypes.JK_FLIPFLOP || comp.type === ComponentTypes.D_FLIPFLOP ||
+              comp.type === ComponentTypes.T_FLIPFLOP ? {
+            state: cloneData(comp.state || { Q: 0, Qbar: 1 }),
+            trigger: comp.trigger || 'rising'
           } : {})
         };
       }),

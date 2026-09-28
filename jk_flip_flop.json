@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "components": [
+    {
+      "id": "comp_in_j",
+      "type": "INPUT",
+      "x": 160,
+      "y": 180,
+      "rotation": 0,
+      "value": 1,
+      "name": "J"
+    },
+    {
+      "id": "comp_clk",
+      "type": "CLOCK",
+      "x": 160,
+      "y": 260,
+      "rotation": 0,
+      "value": 0,
+      "name": "CLK",
+      "frequency": 1,
+      "period": 1000,
+      "dutyCycle": 50,
+      "running": false,
+      "pulseType": "HIGH",
+      "pulseDuration": 200
+    },
+    {
+      "id": "comp_in_k",
+      "type": "INPUT",
+      "x": 160,
+      "y": 340,
+      "rotation": 0,
+      "value": 1,
+      "name": "K"
+    },
+    {
+      "id": "comp_jk_ff",
+      "type": "JK_FLIPFLOP",
+      "x": 360,
+      "y": 260,
+      "rotation": 0,
+      "value": 0,
+      "name": "JK_FF",
+      "state": {
+        "Q": 0,
+        "Qbar": 1
+      },
+      "trigger": "rising"
+    },
+    {
+      "id": "comp_out_q",
+      "type": "OUTPUT",
+      "x": 560,
+      "y": 210,
+      "rotation": 0,
+      "value": 0,
+      "name": "Q"
+    },
+    {
+      "id": "comp_out_qbar",
+      "type": "OUTPUT",
+      "x": 560,
+      "y": 310,
+      "rotation": 0,
+      "value": 1,
+      "name": "Q̅"
+    }
+  ],
+  "connections": [
+    {
+      "id": "wire_j",
+      "fromCompId": "comp_in_j",
+      "fromPinId": "out0",
+      "toCompId": "comp_jk_ff",
+      "toPinId": "in_j",
+      "state": 1
+    },
+    {
+      "id": "wire_clk",
+      "fromCompId": "comp_clk",
+      "fromPinId": "out0",
+      "toCompId": "comp_jk_ff",
+      "toPinId": "in_clk",
+      "state": 0
+    },
+    {
+      "id": "wire_k",
+      "fromCompId": "comp_in_k",
+      "fromPinId": "out0",
+      "toCompId": "comp_jk_ff",
+      "toPinId": "in_k",
+      "state": 1
+    },
+    {
+      "id": "wire_out_q",
+      "fromCompId": "comp_jk_ff",
+      "fromPinId": "out_q",
+      "toCompId": "comp_out_q",
+      "toPinId": "in0",
+      "state": 0
+    },
+    {
+      "id": "wire_out_qbar",
+      "fromCompId": "comp_jk_ff",
+      "fromPinId": "out_qbar",
+      "toCompId": "comp_out_qbar",
+      "toPinId": "in0",
+      "state": 1
+    }
+  ]
+}

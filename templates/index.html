@@ -103,15 +103,35 @@
       </div>
 
       <div class="tool-group">
-        <button class="tool-btn" id="btn-sim-play-pause" title="Start/Pause All Continuous Clocks">▶ Run</button>
+        <div class="tool-dropdown-container" id="dropdown-latches-container">
+          <button class="tool-btn tool-dropdown-btn" id="btn-dropdown-latches" title="Latches (Level-Sensitive)">
+            <span>Latches</span> <span class="arrow">▼</span>
+          </button>
+          <div class="tool-dropdown-menu" id="menu-dropdown-latches">
+            <div class="tool-dropdown-item" id="tool-sr-latch" data-tool="SR_LATCH">SR Latch</div>
+            <div class="tool-dropdown-item" id="tool-d-latch" data-tool="D_LATCH">D Latch</div>
+            <div class="tool-dropdown-item" id="tool-jk-latch" data-tool="JK_LATCH">JK Latch</div>
+            <div class="tool-dropdown-item" id="tool-gated-latch" data-tool="GATED_LATCH">Gated Latch</div>
+          </div>
+        </div>
+
+        <div class="tool-dropdown-container" id="dropdown-ff-container">
+          <button class="tool-btn tool-dropdown-btn" id="btn-dropdown-ff" title="Flip-Flops (Edge-Triggered)">
+            <span>Flip-Flops</span> <span class="arrow">▼</span>
+          </button>
+          <div class="tool-dropdown-menu" id="menu-dropdown-ff">
+            <div class="tool-dropdown-item" id="tool-sr-ff" data-tool="SR_FLIPFLOP">SR Flip-Flop</div>
+            <div class="tool-dropdown-item" id="tool-jk-ff" data-tool="JK_FLIPFLOP">JK Flip-Flop</div>
+            <div class="tool-dropdown-item" id="tool-d-ff" data-tool="D_FLIPFLOP">D Flip-Flop</div>
+            <div class="tool-dropdown-item" id="tool-t-ff" data-tool="T_FLIPFLOP">T Flip-Flop</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tool-group">
+        <button class="tool-btn btn-pulse" id="btn-sim-pulse" title="Generate exactly one clock pulse (0 → 1 → 0)">⚡ PULSE</button>
+        <span id="clk-status-indicator" class="clk-indicator" title="Current Clock State">CLK: LOW</span>
         <button class="tool-btn" id="btn-sim-reset" title="Reset Simulation Sequential States">Reset Sim</button>
-        <select id="sim-speed-select" class="tool-select" title="Simulation Speed">
-          <option value="0.25">0.25x</option>
-          <option value="0.5">0.5x</option>
-          <option value="1" selected>1x</option>
-          <option value="2">2x</option>
-          <option value="5">5x</option>
-        </select>
       </div>
 
       <div class="tool-group">

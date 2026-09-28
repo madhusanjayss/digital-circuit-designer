@@ -60,10 +60,19 @@ function initApp() {
     },
     onToolChanged: (toolName) => {
       document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tool-dropdown-item').forEach(item => item.classList.remove('active'));
       const id1 = `tool-${String(toolName || '').toLowerCase().replace(/_/g, '-')}`;
       const id2 = `tool-${String(toolName || '').toLowerCase()}`;
       const activeBtn = document.getElementById(id1) || document.getElementById(id2);
       if (activeBtn) activeBtn.classList.add('active');
+
+      const isLatch = [ComponentTypes.SR_LATCH, ComponentTypes.D_LATCH, ComponentTypes.JK_LATCH, ComponentTypes.GATED_LATCH].includes(toolName);
+      const isFF = [ComponentTypes.SR_FLIPFLOP, ComponentTypes.JK_FLIPFLOP, ComponentTypes.D_FLIPFLOP, ComponentTypes.T_FLIPFLOP].includes(toolName);
+      if (isLatch) {
+        document.getElementById('btn-dropdown-latches')?.classList.add('active');
+      } else if (isFF) {
+        document.getElementById('btn-dropdown-ff')?.classList.add('active');
+      }
     },
     onSelectionChanged: (selectedComp, selectedWire) => {
       updateInspector(selectedComp, selectedWire);
@@ -200,61 +209,84 @@ function initApp() {
   });
 
   // --------------------------------------------------------------------------
-  // Global Simulation Controls (Run/Pause, Reset, Speed)
+  // Global Simulation Controls (Manual Pulse, Clock Indicator, Reset)
   // --------------------------------------------------------------------------
-  const btnSimPlayPause = document.getElementById('btn-sim-play-pause');
-  let isClocksRunning = false;
+  const btnSimPulse = document.getElementById('btn-sim-pulse');
+  const clkStatusIndicator = document.getElementById('clk-status-indicator');
 
-  btnSimPlayPause?.addEventListener('click', () => {
-    isClocksRunning = !isClocksRunning;
-    if (isClocksRunning) {
-      simulator.startAllClocks();
-      btnSimPlayPause.textContent = '⏸ Pause';
-      btnSimPlayPause.style.color = '#dc2626';
-      showToast('Started continuous clocks');
+  function updateClockStatusUI(isHigh) {
+    if (!clkStatusIndicator) return;
+    if (isHigh) {
+      clkStatusIndicator.textContent = 'CLK: HIGH';
+      clkStatusIndicator.classList.add('clk-high');
     } else {
-      simulator.stopAllClocks();
-      btnSimPlayPause.textContent = '▶ Run';
-      btnSimPlayPause.style.color = '#15803d';
-      showToast('Paused clocks');
+      clkStatusIndicator.textContent = 'CLK: LOW';
+      clkStatusIndicator.classList.remove('clk-high');
     }
-    interaction.requestRender();
+  }
+
+  btnSimPulse?.addEventListener('click', async () => {
+    if (simulator.isPulsing) return;
+
+    const hasClocks = Array.from(circuit.components.values()).some(c => c.type === ComponentTypes.CLOCK);
+    if (!hasClocks) {
+      showToast('No Clock component on canvas. Add a Clock (C) first.');
+      return;
+    }
+
+    // Disable button during the pulse to prevent accidental multiple pulses
+    btnSimPulse.disabled = true;
+    updateClockStatusUI(true);
+
+    try {
+      await simulator.pulseAllClocks(200);
+      showToast('Clock pulse completed (0 → 1 → 0)');
+    } finally {
+      btnSimPulse.disabled = false;
+      updateClockStatusUI(false);
+      interaction.requestRender();
+    }
   });
 
   const btnSimReset = document.getElementById('btn-sim-reset');
   btnSimReset?.addEventListener('click', () => {
     simulator.resetSimulation();
-    if (btnSimPlayPause) {
-      btnSimPlayPause.textContent = '▶ Run';
-      btnSimPlayPause.style.color = '#15803d';
-      isClocksRunning = false;
+    if (btnSimPulse) {
+      btnSimPulse.disabled = false;
     }
+    updateClockStatusUI(false);
     interaction.triggerSimulation();
     showToast('Reset simulation: clocks stopped, latch states cleared');
   });
 
   document.getElementById('menu-circuit-reset-sim')?.addEventListener('click', () => {
     simulator.resetSimulation();
-    if (btnSimPlayPause) {
-      btnSimPlayPause.textContent = '▶ Run';
-      btnSimPlayPause.style.color = '#15803d';
-      isClocksRunning = false;
+    if (btnSimPulse) {
+      btnSimPulse.disabled = false;
     }
+    updateClockStatusUI(false);
     interaction.triggerSimulation();
     showToast('Reset simulation: clocks stopped, latch states cleared');
   });
 
-  document.getElementById('sim-speed-select')?.addEventListener('change', (e) => {
-    simulator.setSimulationSpeed(parseFloat(e.target.value));
-    showToast(`Simulation speed: ${e.target.value}x`);
-  });
-
   simulator.setOnTickCallback(() => {
     interaction.requestRender();
+    const anyClockHigh = Array.from(circuit.components.values()).some(
+      c => c.type === ComponentTypes.CLOCK && (c.value === 1 || c._pulsing)
+    );
+    updateClockStatusUI(anyClockHigh);
+
+    if (btnSimPulse) {
+      btnSimPulse.disabled = simulator.isPulsing;
+    }
+
     if (interaction.selectedCompIds.size === 1) {
       const selectedId = Array.from(interaction.selectedCompIds)[0];
       const selComp = circuit.components.get(selectedId);
-      if (selComp && (selComp.type === ComponentTypes.CLOCK || selComp.type === ComponentTypes.D_LATCH || selComp.type === ComponentTypes.SR_LATCH)) {
+      if (selComp && (selComp.type === ComponentTypes.CLOCK || selComp.type === ComponentTypes.D_LATCH || selComp.type === ComponentTypes.SR_LATCH ||
+          selComp.type === ComponentTypes.GATED_LATCH || selComp.type === ComponentTypes.JK_LATCH ||
+          selComp.type === ComponentTypes.SR_FLIPFLOP ||
+          selComp.type === ComponentTypes.JK_FLIPFLOP || selComp.type === ComponentTypes.D_FLIPFLOP || selComp.type === ComponentTypes.T_FLIPFLOP)) {
         updateInspector(selComp, null);
       }
     }
@@ -399,53 +431,31 @@ function initApp() {
       }
 
       if (comp.type === ComponentTypes.CLOCK) {
-        const isRunning = !!comp.running;
+        const isPulsing = !!comp._pulsing || simulator.isPulsing;
         const clkVal = comp.value === 1 ? 1 : 0;
         const nclkVal = clkVal === 1 ? 0 : 1;
-        const freq = comp.frequency ?? 1;
-        const period = comp.period ?? 1000;
-        const duty = comp.dutyCycle ?? 50;
-        const pulseDur = comp.pulseDuration ?? 100;
+        const pulseDur = comp.pulseDuration ?? 200;
 
         inspectorContent.innerHTML = `
           <div class="prop-row"><span class="prop-label">ID:</span><span class="prop-value">${comp.id}</span></div>
           <div class="prop-row"><span class="prop-label">Type:</span><span class="prop-value">Clock Generator</span></div>
           <div class="prop-row"><span class="prop-label">Output CLK:</span><span class="prop-value" style="color:${clkVal === 1 ? '#059669' : '#475569'}; font-weight:800;">${clkVal} (${clkVal === 1 ? 'HIGH' : 'LOW'})</span></div>
           <div class="prop-row"><span class="prop-label">Output CLK̅:</span><span class="prop-value" style="color:${nclkVal === 1 ? '#059669' : '#475569'}; font-weight:800;">${nclkVal} (${nclkVal === 1 ? 'HIGH' : 'LOW'})</span></div>
-          <div class="prop-row"><span class="prop-label">Mode:</span><span class="prop-value" style="color:${isRunning ? '#15803d' : '#2563eb'}; font-weight:700;">${isRunning ? 'Continuous Run' : 'Manual Push Button'}</span></div>
+          <div class="prop-row"><span class="prop-label">Mode:</span><span class="prop-value" style="color:#2563eb; font-weight:700;">Manual Single Pulse (1 Press = 1 Pulse)</span></div>
           <div class="prop-row"><span class="prop-label">Rotation:</span><span class="prop-value">${comp.rotation || 0}°</span></div>
           <div class="prop-row"><span class="prop-label">Position:</span><span class="prop-value">X:${comp.x}, Y:${comp.y}</span></div>
 
           <div style="margin-top: 10px; border-top: 1px solid var(--border-light, #cbd5e1); padding-top: 8px;">
-            <div style="font-weight:700; font-size:11px; margin-bottom:6px; color:#1d4ed8;">MANUAL TRIGGER (1 PRESS = 1 PULSE)</div>
-            <button class="tool-btn" id="btn-clk-pulse-manual" style="width:100%; height:34px; background:#eff6ff; border:1.5px solid #2563eb; color:#1d4ed8; font-weight:800; font-size:12px; margin-bottom:6px; cursor:pointer;">
-              👆 Press Clock (1 Pulse)
+            <div style="font-weight:700; font-size:11px; margin-bottom:6px; color:#1d4ed8;">MANUAL PULSE (1 PRESS = 1 PULSE)</div>
+            <button class="tool-btn" id="btn-clk-pulse-manual" ${isPulsing ? 'disabled' : ''} style="width:100%; height:34px; background:${isPulsing ? '#f1f5f9' : '#eff6ff'}; border:1.5px solid ${isPulsing ? '#cbd5e1' : '#2563eb'}; color:${isPulsing ? '#94a3b8' : '#1d4ed8'}; font-weight:800; font-size:12px; margin-bottom:6px; cursor:${isPulsing ? 'not-allowed' : 'pointer'};">
+              ${isPulsing ? '⏳ Pulsing (0 → 1 → 0)...' : '⚡ PULSE (0 → 1 → 0)'}
             </button>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
               <label style="font-size:11px; color:#64748b;">Pulse Duration:</label>
               <div style="display:flex; align-items:center; gap:3px;">
-                <input type="number" id="inp-clk-pulse-dur" value="${pulseDur}" min="20" max="5000" step="50" style="width:65px; padding:2px 4px; font-size:11px; border:1px solid #cbd5e1; border-radius:3px;">
+                <input type="number" id="inp-clk-pulse-dur" value="${pulseDur}" min="20" max="2000" step="50" style="width:65px; padding:2px 4px; font-size:11px; border:1px solid #cbd5e1; border-radius:3px;">
                 <span style="font-size:10px; color:#64748b;">ms</span>
               </div>
-            </div>
-          </div>
-
-          <div style="margin-top: 10px; border-top: 1px solid var(--border-light, #cbd5e1); padding-top: 8px;">
-            <div style="font-weight:700; font-size:11px; margin-bottom:6px; color:#334155;">CONTINUOUS OSCILLATION (OPTIONAL)</div>
-            <button class="tool-btn" id="btn-clk-toggle-run" style="width:100%; font-weight:700; background:${isRunning ? '#fee2e2' : '#f8fafc'}; color:${isRunning ? '#b91c1c' : '#334155'}; border:1px solid ${isRunning ? '#ef4444' : '#cbd5e1'}; margin-bottom:6px; cursor:pointer;">
-              ${isRunning ? '⏹ Stop Continuous Run' : '▶ Start Continuous Run'}
-            </button>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <label style="font-size:11px; color:#64748b;">Frequency (Hz):</label>
-              <input type="number" id="inp-clk-freq" value="${freq}" min="0.1" max="50" step="0.5" style="width:75px; padding:2px 4px; font-size:11px; border:1px solid #cbd5e1; border-radius:3px;">
-            </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <label style="font-size:11px; color:#64748b;">Period (ms):</label>
-              <input type="number" id="inp-clk-period" value="${period}" min="20" max="10000" step="50" style="width:75px; padding:2px 4px; font-size:11px; border:1px solid #cbd5e1; border-radius:3px;">
-            </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <label style="font-size:11px; color:#64748b;">Duty Cycle (%):</label>
-              <input type="number" id="inp-clk-duty" value="${duty}" min="1" max="99" step="5" style="width:75px; padding:2px 4px; font-size:11px; border:1px solid #cbd5e1; border-radius:3px;">
             </div>
           </div>
 
@@ -455,30 +465,15 @@ function initApp() {
           </div>
         `;
 
-        document.getElementById('btn-clk-pulse-manual')?.addEventListener('click', () => {
-          const dur = comp.pulseDuration || 100;
-          simulator.triggerPulse(comp.id, 'HIGH', dur);
+        document.getElementById('btn-clk-pulse-manual')?.addEventListener('click', async () => {
+          if (simulator.isPulsing || comp._pulsing) return;
+          const dur = comp.pulseDuration || 200;
+          await simulator.triggerPulse(comp.id, 'HIGH', dur);
           updateInspector(circuit.components.get(comp.id), null);
           showToast(`Clock pulsed for ${dur} ms`);
         });
-        document.getElementById('btn-clk-toggle-run')?.addEventListener('click', () => {
-          simulator.toggleClockRunning(comp.id);
-          updateInspector(circuit.components.get(comp.id), null);
-        });
-        document.getElementById('inp-clk-freq')?.addEventListener('change', (e) => {
-          simulator.setClockFrequency(comp.id, parseFloat(e.target.value));
-          updateInspector(circuit.components.get(comp.id), null);
-        });
-        document.getElementById('inp-clk-period')?.addEventListener('change', (e) => {
-          simulator.setClockPeriod(comp.id, parseInt(e.target.value, 10));
-          updateInspector(circuit.components.get(comp.id), null);
-        });
-        document.getElementById('inp-clk-duty')?.addEventListener('change', (e) => {
-          simulator.setClockDutyCycle(comp.id, parseInt(e.target.value, 10));
-          updateInspector(circuit.components.get(comp.id), null);
-        });
         document.getElementById('inp-clk-pulse-dur')?.addEventListener('change', (e) => {
-          comp.pulseDuration = Math.max(10, parseInt(e.target.value, 10) || 100);
+          comp.pulseDuration = Math.max(20, parseInt(e.target.value, 10) || 200);
         });
         document.getElementById('btn-inspect-clock-rotate')?.addEventListener('click', () => interaction.rotateComponent(comp.id));
         document.getElementById('btn-inspect-delete')?.addEventListener('click', () => interaction.deleteSelected());
@@ -539,6 +534,190 @@ function initApp() {
           showToast('SR Latch reset to Q=0');
         });
         document.getElementById('btn-inspect-srlatch-rotate')?.addEventListener('click', () => interaction.rotateComponent(comp.id));
+        document.getElementById('btn-inspect-delete')?.addEventListener('click', () => interaction.deleteSelected());
+        return;
+      }
+
+      if (comp.type === ComponentTypes.GATED_LATCH) {
+        const qVal = comp.state?.Q ?? 0;
+        const qBarVal = comp.state?.Qbar ?? 1;
+        const isInvalid = comp.state?.invalid === true;
+        inspectorContent.innerHTML = `
+          <div class="prop-row"><span class="prop-label">ID:</span><span class="prop-value">${comp.id}</span></div>
+          <div class="prop-row"><span class="prop-label">Type:</span><span class="prop-value">Gated SR Latch</span></div>
+          <div class="prop-row"><span class="prop-label">State Q:</span><span class="prop-value" style="color:${qVal === 1 ? '#059669' : '#475569'}; font-weight:800;">${qVal}</span></div>
+          <div class="prop-row"><span class="prop-label">State Q̅:</span><span class="prop-value" style="color:${qBarVal === 1 ? '#059669' : '#475569'}; font-weight:800;">${qBarVal}</span></div>
+          ${isInvalid ? `<div class="prop-row"><span class="prop-label">Condition:</span><span class="prop-value" style="color:#dc2626; font-weight:800;">INVALID (S=1, R=1)</span></div>` : ''}
+          <div class="prop-row"><span class="prop-label">Rotation:</span><span class="prop-value">${comp.rotation || 0}°</span></div>
+          <div class="prop-row"><span class="prop-label">Position:</span><span class="prop-value">X:${comp.x}, Y:${comp.y}</span></div>
+          <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+            <button class="tool-btn" id="btn-inspect-gatedlatch-reset" style="width:100%; background:#eff6ff; border:1px solid #3b82f6; color:#1d4ed8; font-weight:700;">Reset Latch (Q=0, Q̅=1)</button>
+            <button class="tool-btn" id="btn-inspect-gatedlatch-rotate" style="width:100%; font-weight:600;">Rotate 90° (Scroll Click)</button>
+            <button class="tool-btn" id="btn-inspect-delete" style="width:100%; color:#ef4444;">Delete Latch</button>
+          </div>
+        `;
+        document.getElementById('btn-inspect-gatedlatch-reset')?.addEventListener('click', () => {
+          comp.state = { Q: 0, Qbar: 1, invalid: false };
+          comp.value = 0;
+          interaction.triggerSimulation();
+          updateInspector(circuit.components.get(comp.id), null);
+          showToast('Gated Latch reset to Q=0');
+        });
+        document.getElementById('btn-inspect-gatedlatch-rotate')?.addEventListener('click', () => interaction.rotateComponent(comp.id));
+        document.getElementById('btn-inspect-delete')?.addEventListener('click', () => interaction.deleteSelected());
+        return;
+      }
+
+      if (comp.type === ComponentTypes.JK_LATCH) {
+        const qVal = comp.state?.Q ?? 0;
+        const qBarVal = comp.state?.Qbar ?? 1;
+        inspectorContent.innerHTML = `
+          <div class="prop-row"><span class="prop-label">ID:</span><span class="prop-value">${comp.id}</span></div>
+          <div class="prop-row"><span class="prop-label">Type:</span><span class="prop-value">Level-Sensitive JK Latch</span></div>
+          <div class="prop-row"><span class="prop-label">State Q:</span><span class="prop-value" style="color:${qVal === 1 ? '#059669' : '#475569'}; font-weight:800;">${qVal}</span></div>
+          <div class="prop-row"><span class="prop-label">State Q̅:</span><span class="prop-value" style="color:${qBarVal === 1 ? '#059669' : '#475569'}; font-weight:800;">${qBarVal}</span></div>
+          <div class="prop-row"><span class="prop-label">Rotation:</span><span class="prop-value">${comp.rotation || 0}°</span></div>
+          <div class="prop-row"><span class="prop-label">Position:</span><span class="prop-value">X:${comp.x}, Y:${comp.y}</span></div>
+          <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+            <button class="tool-btn" id="btn-inspect-jklatch-reset" style="width:100%; background:#eff6ff; border:1px solid #3b82f6; color:#1d4ed8; font-weight:700;">Reset Latch (Q=0, Q̅=1)</button>
+            <button class="tool-btn" id="btn-inspect-jklatch-rotate" style="width:100%; font-weight:600;">Rotate 90° (Scroll Click)</button>
+            <button class="tool-btn" id="btn-inspect-delete" style="width:100%; color:#ef4444;">Delete Latch</button>
+          </div>
+        `;
+        document.getElementById('btn-inspect-jklatch-reset')?.addEventListener('click', () => {
+          comp.state = { Q: 0, Qbar: 1 };
+          comp.value = 0;
+          interaction.triggerSimulation();
+          updateInspector(circuit.components.get(comp.id), null);
+          showToast('JK Latch reset to Q=0');
+        });
+        document.getElementById('btn-inspect-jklatch-rotate')?.addEventListener('click', () => interaction.rotateComponent(comp.id));
+        document.getElementById('btn-inspect-delete')?.addEventListener('click', () => interaction.deleteSelected());
+        return;
+      }
+
+      if (comp.type === ComponentTypes.SR_FLIPFLOP) {
+        const qVal = comp.state?.Q ?? 0;
+        const qBarVal = comp.state?.Qbar ?? 1;
+        const trigger = comp.trigger || 'rising';
+        const isInvalid = comp.state?.invalid === true;
+        inspectorContent.innerHTML = `
+          <div class="prop-row"><span class="prop-label">ID:</span><span class="prop-value">${comp.id}</span></div>
+          <div class="prop-row"><span class="prop-label">Type:</span><span class="prop-value">Edge-Triggered SR Flip-Flop</span></div>
+          <div class="prop-row"><span class="prop-label">State Q:</span><span class="prop-value" style="color:${qVal === 1 ? '#059669' : '#475569'}; font-weight:800;">${qVal} (${qVal === 1 ? 'HIGH' : 'LOW'})</span></div>
+          <div class="prop-row"><span class="prop-label">State Q̅:</span><span class="prop-value" style="color:${qBarVal === 1 ? '#059669' : '#475569'}; font-weight:800;">${qBarVal} (${qBarVal === 1 ? 'HIGH' : 'LOW'})</span></div>
+          ${isInvalid ? `<div class="prop-row"><span class="prop-label">Condition:</span><span class="prop-value" style="color:#dc2626; font-weight:800;">INVALID (S=1, R=1)</span></div>` : ''}
+          <div class="prop-row"><span class="prop-label">Trigger:</span><span class="prop-value" style="font-weight:700;">${trigger === 'falling' ? 'Falling Edge (↓)' : 'Rising Edge (↑)'}</span></div>
+          <div class="prop-row"><span class="prop-label">Rotation:</span><span class="prop-value">${comp.rotation || 0}°</span></div>
+          <div class="prop-row"><span class="prop-label">Position:</span><span class="prop-value">X:${comp.x}, Y:${comp.y}</span></div>
+          <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+            <button class="tool-btn" id="btn-inspect-srff-reset" style="width:100%; background:#eff6ff; border:1px solid #3b82f6; color:#1d4ed8; font-weight:700;">Reset Flip-Flop (Q=0, Q̅=1)</button>
+            <button class="tool-btn" id="btn-inspect-srff-rotate" style="width:100%; font-weight:600;">Rotate 90° (Scroll Click)</button>
+            <button class="tool-btn" id="btn-inspect-delete" style="width:100%; color:#ef4444;">Delete Flip-Flop</button>
+          </div>
+        `;
+        document.getElementById('btn-inspect-srff-reset')?.addEventListener('click', () => {
+          comp.state = { Q: 0, Qbar: 1, invalid: false };
+          comp.value = 0;
+          comp._prevClk = 0;
+          interaction.triggerSimulation();
+          updateInspector(circuit.components.get(comp.id), null);
+          showToast('SR Flip-Flop reset to Q=0');
+        });
+        document.getElementById('btn-inspect-srff-rotate')?.addEventListener('click', () => interaction.rotateComponent(comp.id));
+        document.getElementById('btn-inspect-delete')?.addEventListener('click', () => interaction.deleteSelected());
+        return;
+      }
+
+      if (comp.type === ComponentTypes.JK_FLIPFLOP) {
+        const qVal = comp.state?.Q ?? 0;
+        const qBarVal = comp.state?.Qbar ?? 1;
+        const trigger = comp.trigger || 'rising';
+        inspectorContent.innerHTML = `
+          <div class="prop-row"><span class="prop-label">ID:</span><span class="prop-value">${comp.id}</span></div>
+          <div class="prop-row"><span class="prop-label">Type:</span><span class="prop-value">Edge-Triggered JK Flip-Flop</span></div>
+          <div class="prop-row"><span class="prop-label">State Q:</span><span class="prop-value" style="color:${qVal === 1 ? '#059669' : '#475569'}; font-weight:800;">${qVal} (${qVal === 1 ? 'HIGH' : 'LOW'})</span></div>
+          <div class="prop-row"><span class="prop-label">State Q̅:</span><span class="prop-value" style="color:${qBarVal === 1 ? '#059669' : '#475569'}; font-weight:800;">${qBarVal} (${qBarVal === 1 ? 'HIGH' : 'LOW'})</span></div>
+          <div class="prop-row"><span class="prop-label">Trigger:</span><span class="prop-value" style="font-weight:700;">${trigger === 'falling' ? 'Falling Edge (↓)' : 'Rising Edge (↑)'}</span></div>
+          <div class="prop-row"><span class="prop-label">Rotation:</span><span class="prop-value">${comp.rotation || 0}°</span></div>
+          <div class="prop-row"><span class="prop-label">Position:</span><span class="prop-value">X:${comp.x}, Y:${comp.y}</span></div>
+          <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+            <button class="tool-btn" id="btn-inspect-ff-reset" style="width:100%; background:#eff6ff; border:1px solid #3b82f6; color:#1d4ed8; font-weight:700;">Reset Flip-Flop (Q=0, Q̅=1)</button>
+            <button class="tool-btn" id="btn-inspect-ff-rotate" style="width:100%; font-weight:600;">Rotate 90° (Scroll Click)</button>
+            <button class="tool-btn" id="btn-inspect-delete" style="width:100%; color:#ef4444;">Delete Flip-Flop</button>
+          </div>
+        `;
+        document.getElementById('btn-inspect-ff-reset')?.addEventListener('click', () => {
+          comp.state = { Q: 0, Qbar: 1 };
+          comp.value = 0;
+          comp._prevClk = 0;
+          interaction.triggerSimulation();
+          updateInspector(circuit.components.get(comp.id), null);
+          showToast('JK Flip-Flop reset to Q=0');
+        });
+        document.getElementById('btn-inspect-ff-rotate')?.addEventListener('click', () => interaction.rotateComponent(comp.id));
+        document.getElementById('btn-inspect-delete')?.addEventListener('click', () => interaction.deleteSelected());
+        return;
+      }
+
+      if (comp.type === ComponentTypes.D_FLIPFLOP) {
+        const qVal = comp.state?.Q ?? 0;
+        const qBarVal = comp.state?.Qbar ?? 1;
+        const trigger = comp.trigger || 'rising';
+        inspectorContent.innerHTML = `
+          <div class="prop-row"><span class="prop-label">ID:</span><span class="prop-value">${comp.id}</span></div>
+          <div class="prop-row"><span class="prop-label">Type:</span><span class="prop-value">Edge-Triggered D Flip-Flop</span></div>
+          <div class="prop-row"><span class="prop-label">State Q:</span><span class="prop-value" style="color:${qVal === 1 ? '#059669' : '#475569'}; font-weight:800;">${qVal} (${qVal === 1 ? 'HIGH' : 'LOW'})</span></div>
+          <div class="prop-row"><span class="prop-label">State Q̅:</span><span class="prop-value" style="color:${qBarVal === 1 ? '#059669' : '#475569'}; font-weight:800;">${qBarVal} (${qBarVal === 1 ? 'HIGH' : 'LOW'})</span></div>
+          <div class="prop-row"><span class="prop-label">Trigger:</span><span class="prop-value" style="font-weight:700;">${trigger === 'falling' ? 'Falling Edge (↓)' : 'Rising Edge (↑)'}</span></div>
+          <div class="prop-row"><span class="prop-label">Rotation:</span><span class="prop-value">${comp.rotation || 0}°</span></div>
+          <div class="prop-row"><span class="prop-label">Position:</span><span class="prop-value">X:${comp.x}, Y:${comp.y}</span></div>
+          <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+            <button class="tool-btn" id="btn-inspect-ff-reset" style="width:100%; background:#eff6ff; border:1px solid #3b82f6; color:#1d4ed8; font-weight:700;">Reset Flip-Flop (Q=0, Q̅=1)</button>
+            <button class="tool-btn" id="btn-inspect-ff-rotate" style="width:100%; font-weight:600;">Rotate 90° (Scroll Click)</button>
+            <button class="tool-btn" id="btn-inspect-delete" style="width:100%; color:#ef4444;">Delete Flip-Flop</button>
+          </div>
+        `;
+        document.getElementById('btn-inspect-ff-reset')?.addEventListener('click', () => {
+          comp.state = { Q: 0, Qbar: 1 };
+          comp.value = 0;
+          comp._prevClk = 0;
+          interaction.triggerSimulation();
+          updateInspector(circuit.components.get(comp.id), null);
+          showToast('D Flip-Flop reset to Q=0');
+        });
+        document.getElementById('btn-inspect-ff-rotate')?.addEventListener('click', () => interaction.rotateComponent(comp.id));
+        document.getElementById('btn-inspect-delete')?.addEventListener('click', () => interaction.deleteSelected());
+        return;
+      }
+
+      if (comp.type === ComponentTypes.T_FLIPFLOP) {
+        const qVal = comp.state?.Q ?? 0;
+        const qBarVal = comp.state?.Qbar ?? 1;
+        const trigger = comp.trigger || 'rising';
+        inspectorContent.innerHTML = `
+          <div class="prop-row"><span class="prop-label">ID:</span><span class="prop-value">${comp.id}</span></div>
+          <div class="prop-row"><span class="prop-label">Type:</span><span class="prop-value">Edge-Triggered T Flip-Flop</span></div>
+          <div class="prop-row"><span class="prop-label">State Q:</span><span class="prop-value" style="color:${qVal === 1 ? '#059669' : '#475569'}; font-weight:800;">${qVal} (${qVal === 1 ? 'HIGH' : 'LOW'})</span></div>
+          <div class="prop-row"><span class="prop-label">State Q̅:</span><span class="prop-value" style="color:${qBarVal === 1 ? '#059669' : '#475569'}; font-weight:800;">${qBarVal} (${qBarVal === 1 ? 'HIGH' : 'LOW'})</span></div>
+          <div class="prop-row"><span class="prop-label">Trigger:</span><span class="prop-value" style="font-weight:700;">${trigger === 'falling' ? 'Falling Edge (↓)' : 'Rising Edge (↑)'}</span></div>
+          <div class="prop-row"><span class="prop-label">Rotation:</span><span class="prop-value">${comp.rotation || 0}°</span></div>
+          <div class="prop-row"><span class="prop-label">Position:</span><span class="prop-value">X:${comp.x}, Y:${comp.y}</span></div>
+          <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+            <button class="tool-btn" id="btn-inspect-ff-reset" style="width:100%; background:#eff6ff; border:1px solid #3b82f6; color:#1d4ed8; font-weight:700;">Reset Flip-Flop (Q=0, Q̅=1)</button>
+            <button class="tool-btn" id="btn-inspect-ff-rotate" style="width:100%; font-weight:600;">Rotate 90° (Scroll Click)</button>
+            <button class="tool-btn" id="btn-inspect-delete" style="width:100%; color:#ef4444;">Delete Flip-Flop</button>
+          </div>
+        `;
+        document.getElementById('btn-inspect-ff-reset')?.addEventListener('click', () => {
+          comp.state = { Q: 0, Qbar: 1 };
+          comp.value = 0;
+          comp._prevClk = 0;
+          interaction.triggerSimulation();
+          updateInspector(circuit.components.get(comp.id), null);
+          showToast('T Flip-Flop reset to Q=0');
+        });
+        document.getElementById('btn-inspect-ff-rotate')?.addEventListener('click', () => interaction.rotateComponent(comp.id));
         document.getElementById('btn-inspect-delete')?.addEventListener('click', () => interaction.deleteSelected());
         return;
       }
@@ -620,13 +799,58 @@ function initApp() {
     { id: 'tool-vcc-5', name: ComponentTypes.VCC_5 },
     { id: 'tool-vcc-neg-5', name: ComponentTypes.VCC_NEG_5 },
     { id: 'tool-vcc-12', name: ComponentTypes.VCC_12 },
-    { id: 'tool-vcc-neg-12', name: ComponentTypes.VCC_NEG_12 }
+    { id: 'tool-vcc-neg-12', name: ComponentTypes.VCC_NEG_12 },
+    { id: 'tool-sr-latch', name: ComponentTypes.SR_LATCH },
+    { id: 'tool-d-latch', name: ComponentTypes.D_LATCH },
+    { id: 'tool-jk-latch', name: ComponentTypes.JK_LATCH },
+    { id: 'tool-gated-latch', name: ComponentTypes.GATED_LATCH },
+    { id: 'tool-sr-ff', name: ComponentTypes.SR_FLIPFLOP },
+    { id: 'tool-jk-ff', name: ComponentTypes.JK_FLIPFLOP },
+    { id: 'tool-d-ff', name: ComponentTypes.D_FLIPFLOP },
+    { id: 'tool-t-ff', name: ComponentTypes.T_FLIPFLOP }
   ];
 
   toolButtons.forEach(tool => {
     document.getElementById(tool.id)?.addEventListener('click', () => {
       interaction.setActiveTool(tool.name);
     });
+  });
+
+  // Dropdown menus for Latches and Flip-Flops in Toolbar
+  const latchContainer = document.getElementById('dropdown-latches-container');
+  const ffContainer = document.getElementById('dropdown-ff-container');
+  const btnLatches = document.getElementById('btn-dropdown-latches');
+  const btnFF = document.getElementById('btn-dropdown-ff');
+
+  btnLatches?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    ffContainer?.classList.remove('open');
+    latchContainer?.classList.toggle('open');
+  });
+
+  btnFF?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    latchContainer?.classList.remove('open');
+    ffContainer?.classList.toggle('open');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!latchContainer?.contains(e.target)) latchContainer?.classList.remove('open');
+    if (!ffContainer?.contains(e.target)) ffContainer?.classList.remove('open');
+  });
+
+  document.querySelectorAll('.tool-dropdown-item').forEach(item => {
+    item.addEventListener('click', () => {
+      latchContainer?.classList.remove('open');
+      ffContainer?.classList.remove('open');
+    });
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      latchContainer?.classList.remove('open');
+      ffContainer?.classList.remove('open');
+    }
   });
 
   // Zoom Toolbar buttons

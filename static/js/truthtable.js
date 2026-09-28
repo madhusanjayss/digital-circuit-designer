@@ -170,7 +170,10 @@ export function generateTruthTable(circuit, mode = 'binary') {
   }
 
   const hasSequential = Array.from(circuit.components.values()).some(
-    c => c.type === ComponentTypes.CLOCK || c.type === ComponentTypes.D_LATCH || c.type === ComponentTypes.SR_LATCH
+    c => c.type === ComponentTypes.CLOCK || c.type === ComponentTypes.D_LATCH || c.type === ComponentTypes.SR_LATCH ||
+         c.type === ComponentTypes.GATED_LATCH || c.type === ComponentTypes.JK_LATCH ||
+         c.type === ComponentTypes.SR_FLIPFLOP ||
+         c.type === ComponentTypes.JK_FLIPFLOP || c.type === ComponentTypes.D_FLIPFLOP || c.type === ComponentTypes.T_FLIPFLOP
   );
   if (hasSequential) {
     return `<div style="padding: 24px 16px; text-align: center;">

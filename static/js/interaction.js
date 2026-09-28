@@ -685,9 +685,8 @@ export class InteractionHandler {
       const clickedSelectedComp = targetComp && this.selectedCompIds.has(targetComp.getAttribute('data-id'));
       const clickedComp = clickedSelectedComp ? this.circuit.components.get(targetComp.getAttribute('data-id')) : null;
       const isSelectedInput = clickedComp && clickedComp.type === ComponentTypes.INPUT;
-      const isSelectedClockBtn = clickedComp && clickedComp.type === ComponentTypes.CLOCK && Boolean(e.target.closest('.clock-push-btn'));
       const insideSelectedBox = targetBoundingBox || (this.isPointInsideSelectedGroup(world) && !targetComp) || this.activeTool === 'move';
-      if (!isSelectedInput && !isSelectedClockBtn && !isRailComponent(clickedComp) && (clickedSelectedComp || insideSelectedBox)) {
+      if (!isSelectedInput && !isRailComponent(clickedComp) && (clickedSelectedComp || insideSelectedBox)) {
         this.beginGroupDrag(world, e, clickedSelectedComp ? targetComp.getAttribute('data-id') : null);
         this.capturePointer(e);
         return;
@@ -708,11 +707,18 @@ export class InteractionHandler {
         return;
       }
 
-      const clockPushBtn = e.target.closest('.clock-push-btn');
-      if (clockPushBtn) {
-        this.simulator.triggerPulse(comp.id, 'HIGH', comp.pulseDuration || 100);
-        this.selectComponent(comp.id, false);
-        this.uiCallbacks.onToast(`Clock ${getCleanLabel(comp)} triggered (1 pulse)`);
+      if (comp.type === ComponentTypes.CLOCK) {
+        if (isMultiSelectKey) {
+          this.selectComponent(comp.id, true);
+          return;
+        }
+        // Left click on clock ONLY triggers pulse functionality, NOT selection.
+        if (this.simulator.isPulsing || comp._pulsing) {
+          return;
+        }
+        const dur = comp.pulseDuration || 200;
+        this.simulator.triggerPulse(comp.id, 'HIGH', dur);
+        this.uiCallbacks.onToast(`Clock ${getCleanLabel(comp)} pulsed (1 pulse)`);
         return;
       }
 
@@ -1124,7 +1130,18 @@ export class InteractionHandler {
         this.triggerSimulation();
       } else {
         this.history.cancelTransaction();
-        if (this.groupClickTargetCompId) this.selectComponent(this.groupClickTargetCompId, false);
+        if (this.groupClickTargetCompId) {
+          const comp = this.circuit.components.get(this.groupClickTargetCompId);
+          if (comp && comp.type === ComponentTypes.CLOCK) {
+            if (!this.simulator.isPulsing && !comp._pulsing) {
+              const dur = comp.pulseDuration || 200;
+              this.simulator.triggerPulse(comp.id, 'HIGH', dur);
+              this.uiCallbacks.onToast(`Clock ${getCleanLabel(comp)} pulsed (1 pulse)`);
+            }
+          } else {
+            this.selectComponent(this.groupClickTargetCompId, false);
+          }
+        }
       }
       this.isDraggingGroup = false;
       this.groupStartPositions.clear();
